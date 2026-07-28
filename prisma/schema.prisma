@@ -1,0 +1,118 @@
+// Prisma schema — simple SQLite database.
+// Portable: to move to a hosted DB later, switch `provider` to "postgresql"
+// (or "mysql") and update DATABASE_URL. The models below stay the same.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon gives a pooled URL (DATABASE_URL) for the app and a direct URL for
+  // migrations / `prisma db push`. DIRECT_URL falls back to DATABASE_URL locally.
+  directUrl = env("DIRECT_URL")
+}
+
+model Supplier {
+  id           String @id @default(cuid())
+  name         String @unique
+  abbreviation String // e.g. "TYR" — used inside the PO number
+  // Per-supplier running counter that resets each calendar year.
+  // `seq` is the last used number for `seqYear`. Editable to match Excel history.
+  seq          Int    @default(0)
+  seqYear      Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id       String @id @default(cuid())
+  poNumber String @unique
+
+  // Optional link to the supplier record (order still stores a denormalized
+  // copy of the supplier info so the document stays intact if the supplier
+  // is later edited).
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+
+  // Order information
+  supplierName   String
+  attention      String? // Attention / contact person
+  mainEmail      String
+  ccEmails       String  @default("[]") // JSON array of strings
+  poDate         DateTime
+  deliveryMethod String
+  paymentTerms   String?
+  currency       String  @default("USD")
+  preparedBy     String
+
+  // Revision (0 = original, 1 = rev1, ...)
+  revision Int @default(0)
+
+  // Totals
+  grandTotal Float @default(0)
+
+  // Status tracking
+  status           String    @default("PO_SENT")
+  expectedShipping DateTime?
+  expectedArrival  DateTime?
+  emailSentAt      DateTime?
+  emailMode        String?   // "sent" | "preview" — how the last email was handled
+
+  // PDF stored directly in the database (a saved snapshot of the sent document).
+  pdfData Bytes?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items        POItem[]
+  statusEvents StatusEvent[]
+
+  @@index([supplierId])
+}
+
+model POItem {
+  id          String  @id @default(cuid())
+  poId        String
+  itemCode    String
+  description String
+  quantity    Float
+  unitPrice   Float
+  lineTotal   Float
+  receivedQty Float   @default(0) // total quantity received so far (partial deliveries)
+  sortOrder   Int     @default(0)
+
+  po       PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  receipts ItemReceipt[]
+
+  @@index([poId])
+}
+
+model ItemReceipt {
+  id         String   @id @default(cuid())
+  itemId     String
+  quantity   Float
+  note       String?
+  receivedAt DateTime @default(now())
+
+  item POItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+model StatusEvent {
+  id        String   @id @default(cuid())
+  poId      String
+  type      String // e.g. "PO_SENT", "ORDER_CONFIRMED", "RECEIVED", "REVISED", "NOTE"
+  label     String // human readable
+  note      String?
+  createdAt DateTime @default(now())
+
+  po PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+
+  @@index([poId])
+}
