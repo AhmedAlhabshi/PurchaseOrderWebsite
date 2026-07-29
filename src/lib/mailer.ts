@@ -77,6 +77,13 @@ export async function sendPOEmail(args: SendPOEmailArgs): Promise<SendResult> {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASSWORD,
     },
+    // Some shared hosts (cPanel/HostPapa) present a certificate that does not
+    // match the mail hostname. Set SMTP_TLS_INSECURE=true only if you hit a
+    // certificate error — it keeps the connection encrypted but skips the
+    // hostname/authority check.
+    ...(String(process.env.SMTP_TLS_INSECURE || "false") === "true"
+      ? { tls: { rejectUnauthorized: false } }
+      : {}),
   });
 
   const info = await transporter.sendMail({
