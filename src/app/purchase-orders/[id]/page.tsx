@@ -15,6 +15,7 @@ import StatusBadge from "@/components/StatusBadge";
 import Timeline, { TimelineState } from "@/components/Timeline";
 import TrackingPanel from "@/components/TrackingPanel";
 import ReceivingPanel, { ReceivingItem } from "@/components/ReceivingPanel";
+import DeletePOButton from "@/components/DeletePOButton";
 
 export const dynamic = "force-dynamic";
 
@@ -134,6 +135,7 @@ export default async function PODetailsPage({
           <a href={`/api/purchase-orders/${po.id}/pdf?download=1`} className="btn-primary">
             Download PDF
           </a>
+          <DeletePOButton poId={po.id} poNumber={po.poNumber} />
         </div>
       </div>
 
