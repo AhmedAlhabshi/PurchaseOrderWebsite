@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { stringifyCc } from "@/lib/serialize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const emailsSchema = z
+  .array(z.string().trim())
+  .default([])
+  .transform((arr) => arr.map((e) => e.trim()).filter(Boolean))
+  .pipe(z.array(z.string().email("One of the supplier emails is not valid")));
 
 const updateSchema = z.object({
   name: z.string().trim().min(1, "Supplier name is required"),
@@ -14,6 +21,7 @@ const updateSchema = z.object({
     .max(6, "Abbreviation is too long")
     .transform((s) => s.toUpperCase().replace(/[^A-Z0-9]/g, "")),
   currentNumber: z.coerce.number().int().min(0).default(0),
+  emails: emailsSchema,
 });
 
 export async function PATCH(
@@ -39,7 +47,7 @@ export async function PATCH(
       { status: 422 }
     );
   }
-  const { name, abbreviation, currentNumber } = parsed.data;
+  const { name, abbreviation, currentNumber, emails } = parsed.data;
 
   // Ensure the name stays unique.
   const clash = await prisma.supplier.findFirst({
@@ -57,6 +65,7 @@ export async function PATCH(
     data: {
       name,
       abbreviation,
+      emails: stringifyCc(emails),
       seq: currentNumber,
       seqYear: new Date().getFullYear(),
     },

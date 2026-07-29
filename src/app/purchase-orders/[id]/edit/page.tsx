@@ -27,6 +27,7 @@ export default async function EditPOPage({
     abbreviation: s.abbreviation,
     seq: s.seq,
     seqYear: s.seqYear,
+    emails: parseCc(s.emails),
   }));
 
   const initial: POFormInitial = {
@@ -47,6 +48,7 @@ export default async function EditPOPage({
       description: it.description,
       quantity: it.quantity,
       unitPrice: it.unitPrice,
+      taxRate: it.taxRate,
     })),
   };
 

@@ -18,6 +18,7 @@ model Supplier {
   id           String @id @default(cuid())
   name         String @unique
   abbreviation String // e.g. "TYR" — used inside the PO number
+  emails       String @default("[]") // JSON array of the supplier's known emails
   // Per-supplier running counter that resets each calendar year.
   // `seq` is the last used number for `seqYear`. Editable to match Excel history.
   seq          Int    @default(0)
@@ -83,6 +84,7 @@ model POItem {
   quantity    Float
   unitPrice   Float
   lineTotal   Float
+  taxRate     Float   @default(0) // optional VAT percentage for this item (e.g. 15)
   receivedQty Float   @default(0) // total quantity received so far (partial deliveries)
   sortOrder   Int     @default(0)
 

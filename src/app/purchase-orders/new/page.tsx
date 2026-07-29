@@ -1,6 +1,7 @@
 import Link from "next/link";
 import POForm, { SupplierOption } from "@/components/POForm";
 import { prisma } from "@/lib/db";
+import { parseCc } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function NewPOPage() {
     abbreviation: s.abbreviation,
     seq: s.seq,
     seqYear: s.seqYear,
+    emails: parseCc(s.emails),
   }));
 
   if (options.length === 0) {

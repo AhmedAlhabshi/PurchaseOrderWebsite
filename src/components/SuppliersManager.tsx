@@ -9,8 +9,16 @@ export type SupplierRow = {
   abbreviation: string;
   seq: number;
   seqYear: number;
+  emails: string[];
   orderCount: number;
 };
+
+function splitEmails(text: string): string[] {
+  return text
+    .split(/[\n,]+/)
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
 
 const YEAR = new Date().getFullYear();
 
@@ -29,6 +37,7 @@ export default function SuppliersManager({
   const [name, setName] = useState("");
   const [abbr, setAbbr] = useState("");
   const [num, setNum] = useState("0");
+  const [emails, setEmails] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,6 +57,7 @@ export default function SuppliersManager({
           name,
           abbreviation: abbr,
           currentNumber: Number(num) || 0,
+          emails: splitEmails(emails),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -58,6 +68,7 @@ export default function SuppliersManager({
       }
       setName("");
       setAbbr("");
+      setEmails("");
       setNum("0");
       router.refresh();
     } catch {
@@ -113,6 +124,16 @@ export default function SuppliersManager({
               onChange={(e) => setNum(e.target.value)}
             />
           </div>
+          <div className="sm:col-span-4">
+            <label className="field-label">Emails (optional)</label>
+            <textarea
+              className="input"
+              rows={2}
+              value={emails}
+              onChange={(e) => setEmails(e.target.value)}
+              placeholder="one per line, or comma-separated — shown as choices when creating a PO"
+            />
+          </div>
         </div>
         <div className="mt-4">
           <button className="btn-primary" onClick={addSupplier} disabled={adding}>
@@ -129,6 +150,7 @@ export default function SuppliersManager({
               <tr>
                 <th className="px-4 py-3 font-semibold">Supplier</th>
                 <th className="px-4 py-3 font-semibold">Abbr.</th>
+                <th className="px-4 py-3 font-semibold">Emails</th>
                 <th className="px-4 py-3 font-semibold">Current #</th>
                 <th className="px-4 py-3 font-semibold">Next PO Number</th>
                 <th className="px-4 py-3 font-semibold">Orders</th>
@@ -153,6 +175,9 @@ export default function SuppliersManager({
                       {s.name}
                     </td>
                     <td className="px-4 py-3 text-slate-600">{s.abbreviation}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {s.emails.length ? s.emails.join(", ") : "—"}
+                    </td>
                     <td className="px-4 py-3 text-slate-600">
                       {s.seqYear === YEAR ? s.seq : 0}
                     </td>
@@ -173,7 +198,7 @@ export default function SuppliersManager({
               )}
               {suppliers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     No suppliers yet. Add one above.
                   </td>
                 </tr>
@@ -198,6 +223,7 @@ function EditRow({
   const [name, setName] = useState(supplier.name);
   const [abbr, setAbbr] = useState(supplier.abbreviation);
   const [num, setNum] = useState(String(supplier.seqYear === YEAR ? supplier.seq : 0));
+  const [emails, setEmails] = useState(supplier.emails.join("\n"));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -212,6 +238,7 @@ function EditRow({
           name,
           abbreviation: abbr,
           currentNumber: Number(num) || 0,
+          emails: splitEmails(emails),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -259,6 +286,15 @@ function EditRow({
           value={abbr}
           maxLength={6}
           onChange={(e) => setAbbr(e.target.value.toUpperCase())}
+        />
+      </td>
+      <td className="px-4 py-2">
+        <textarea
+          className="input min-w-[200px]"
+          rows={2}
+          value={emails}
+          onChange={(e) => setEmails(e.target.value)}
+          placeholder="one per line"
         />
       </td>
       <td className="px-4 py-2" colSpan={2}>

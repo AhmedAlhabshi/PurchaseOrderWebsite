@@ -10,6 +10,7 @@ import {
   toDateInputValue,
 } from "@/lib/format";
 import { STATUS_ORDER, POStatus } from "@/lib/status";
+import { computeSubtotal, computeTaxTotal } from "@/lib/validation";
 import StatusBadge from "@/components/StatusBadge";
 import Timeline, { TimelineState } from "@/components/Timeline";
 import TrackingPanel from "@/components/TrackingPanel";
@@ -46,6 +47,8 @@ export default async function PODetailsPage({
 
   const totalOrdered = po.items.reduce((s, it) => s + it.quantity, 0);
   const totalReceived = po.items.reduce((s, it) => s + it.receivedQty, 0);
+  const subtotal = computeSubtotal(po.items);
+  const taxTotal = computeTaxTotal(po.items);
 
   const timeline: TimelineState = {
     po_sent: true,
@@ -173,6 +176,7 @@ export default async function PODetailsPage({
                     <th className="px-2 py-2">Description</th>
                     <th className="px-2 py-2 text-right">Qty</th>
                     <th className="px-2 py-2 text-right">Unit Price</th>
+                    <th className="px-2 py-2 text-right">Tax %</th>
                     <th className="px-2 py-2 text-right">Line Total</th>
                     <th className="px-2 py-2 text-right">Received</th>
                     <th className="px-2 py-2 text-right">Remaining</th>
@@ -190,6 +194,9 @@ export default async function PODetailsPage({
                         </td>
                         <td className="px-2 py-2 text-right text-slate-600">
                           {formatAmount(it.unitPrice, po.currency)}
+                        </td>
+                        <td className="px-2 py-2 text-right text-slate-600">
+                          {it.taxRate ? `${formatNumber(it.taxRate)}%` : "—"}
                         </td>
                         <td className="px-2 py-2 text-right font-medium text-slate-800">
                           {formatAmount(it.lineTotal, po.currency)}
@@ -210,10 +217,28 @@ export default async function PODetailsPage({
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-slate-200">
-                    <td colSpan={4} className="px-2 py-3 text-right font-semibold text-slate-700">
+                    <td colSpan={5} className="px-2 pt-3 text-right text-slate-500">
+                      Subtotal
+                    </td>
+                    <td className="px-2 pt-3 text-right font-medium text-slate-700">
+                      {formatAmount(subtotal, po.currency)}
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                  <tr>
+                    <td colSpan={5} className="px-2 py-1 text-right text-slate-500">
+                      Tax
+                    </td>
+                    <td className="px-2 py-1 text-right font-medium text-slate-700">
+                      {formatAmount(taxTotal, po.currency)}
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                  <tr>
+                    <td colSpan={5} className="px-2 pb-3 text-right font-semibold text-slate-700">
                       Grand Total
                     </td>
-                    <td className="px-2 py-3 text-right text-lg font-bold text-brand-600">
+                    <td className="px-2 pb-3 text-right text-lg font-bold text-brand-600">
                       {formatAmount(po.grandTotal, po.currency)}
                     </td>
                     <td colSpan={2}></td>

@@ -3,7 +3,12 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { DELIVERY_METHODS, CURRENCIES } from "@/lib/options";
+import {
+  DELIVERY_METHODS,
+  CURRENCIES,
+  DEFAULT_PREPARED_BY,
+  DEFAULT_CC_EMAILS,
+} from "@/lib/options";
 import { formatAmount } from "@/lib/format";
 
 export type SupplierOption = {
@@ -12,6 +17,7 @@ export type SupplierOption = {
   abbreviation: string;
   seq: number;
   seqYear: number;
+  emails: string[];
 };
 
 export type POFormInitial = {
@@ -32,6 +38,7 @@ export type POFormInitial = {
     description: string;
     quantity: number;
     unitPrice: number;
+    taxRate: number;
   }[];
 };
 
@@ -41,6 +48,7 @@ type ItemRow = {
   description: string;
   quantity: string;
   unitPrice: string;
+  taxRate: string;
 };
 
 type Errors = Record<string, string>;
@@ -52,7 +60,14 @@ let keyCounter = 0;
 const newKey = () => `row-${keyCounter++}`;
 
 function emptyItem(): ItemRow {
-  return { key: newKey(), itemCode: "", description: "", quantity: "", unitPrice: "" };
+  return {
+    key: newKey(),
+    itemCode: "",
+    description: "",
+    quantity: "",
+    unitPrice: "",
+    taxRate: "",
+  };
 }
 
 // Projected PO number for a supplier (mirrors the server logic, no DB access).
@@ -84,7 +99,9 @@ export default function POForm({
 
   const [attention, setAttention] = useState(initial?.attention || "");
   const [mainEmail, setMainEmail] = useState(initial?.mainEmail || "");
-  const [ccEmails, setCcEmails] = useState<string[]>(initial?.ccEmails || []);
+  const [ccEmails, setCcEmails] = useState<string[]>(
+    initial ? initial.ccEmails : [...DEFAULT_CC_EMAILS]
+  );
   const [poDate, setPoDate] = useState(initial?.poDate || today);
   const [deliveryMethod, setDeliveryMethod] = useState<string>(
     initial ? deliveryPreset(initial.deliveryMethod) : "DHL"
@@ -96,7 +113,9 @@ export default function POForm({
   );
   const [paymentTerms, setPaymentTerms] = useState(initial?.paymentTerms || "");
   const [currency, setCurrency] = useState<string>(initial?.currency || "USD");
-  const [preparedBy, setPreparedBy] = useState(initial?.preparedBy || "");
+  const [preparedBy, setPreparedBy] = useState(
+    initial?.preparedBy || DEFAULT_PREPARED_BY
+  );
   const [items, setItems] = useState<ItemRow[]>(
     initial && initial.items.length
       ? initial.items.map((it) => ({
@@ -105,6 +124,7 @@ export default function POForm({
           description: it.description,
           quantity: String(it.quantity),
           unitPrice: String(it.unitPrice),
+          taxRate: it.taxRate ? String(it.taxRate) : "",
         }))
       : [emptyItem()]
   );
@@ -124,10 +144,25 @@ export default function POForm({
   const [newSupName, setNewSupName] = useState("");
   const [newSupAbbr, setNewSupAbbr] = useState("");
   const [newSupNum, setNewSupNum] = useState("0");
+  const [newSupEmails, setNewSupEmails] = useState("");
   const [addingSupplier, setAddingSupplier] = useState(false);
   const [addSupError, setAddSupError] = useState<string | null>(null);
 
   const selectedSupplier = suppliers.find((s) => s.id === supplierId) || null;
+  const supplierEmails = selectedSupplier?.emails ?? [];
+
+  // Picking a supplier prefills the main email from its known emails.
+  function selectSupplier(id: string) {
+    setSupplierId(id);
+    const sup = suppliers.find((s) => s.id === id);
+    if (sup && sup.emails.length > 0) setMainEmail(sup.emails[0]);
+  }
+
+  function addCcEmail(email: string) {
+    const e = email.trim();
+    if (!e) return;
+    setCcEmails((cc) => (cc.includes(e) ? cc : [...cc, e]));
+  }
 
   const poNumber = useMemo(() => {
     if (isEdit) return initial?.poNumber || "";
@@ -153,14 +188,21 @@ export default function POForm({
     if (!Number.isFinite(qn) || !Number.isFinite(pn)) return 0;
     return Math.round(qn * pn * 100) / 100;
   };
+  const lineTax = (q: string, p: string, t: string) => {
+    const tn = parseFloat(t);
+    if (!Number.isFinite(tn) || tn <= 0) return 0;
+    return Math.round(lineTotal(q, p) * tn) / 100;
+  };
 
-  const grandTotal = useMemo(
-    () =>
-      Math.round(
-        items.reduce((s, it) => s + lineTotal(it.quantity, it.unitPrice), 0) * 100
-      ) / 100,
-    [items]
-  );
+  const { subtotal, taxTotal, grandTotal } = useMemo(() => {
+    const sub = items.reduce((s, it) => s + lineTotal(it.quantity, it.unitPrice), 0);
+    const tax = items.reduce(
+      (s, it) => s + lineTax(it.quantity, it.unitPrice, it.taxRate),
+      0
+    );
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    return { subtotal: r2(sub), taxTotal: r2(tax), grandTotal: r2(sub + tax) };
+  }, [items]);
 
   // ----- CC helpers -----
   const addCc = () => setCcEmails((cc) => [...cc, ""]);
@@ -176,6 +218,10 @@ export default function POForm({
       setAddSupError("Name and abbreviation are required.");
       return;
     }
+    const emailList = newSupEmails
+      .split(/[\n,]+/)
+      .map((e) => e.trim())
+      .filter(Boolean);
     setAddingSupplier(true);
     try {
       const res = await fetch("/api/suppliers", {
@@ -185,6 +231,7 @@ export default function POForm({
           name: newSupName,
           abbreviation: newSupAbbr,
           currentNumber: Number(newSupNum) || 0,
+          emails: emailList,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -193,15 +240,25 @@ export default function POForm({
         setAddingSupplier(false);
         return;
       }
-      const sup: SupplierOption = data.supplier;
+      const raw = data.supplier;
+      const sup: SupplierOption = {
+        id: raw.id,
+        name: raw.name,
+        abbreviation: raw.abbreviation,
+        seq: raw.seq,
+        seqYear: raw.seqYear,
+        emails: emailList,
+      };
       setSuppliers((list) =>
         [...list, sup].sort((a, b) => a.name.localeCompare(b.name))
       );
       setSupplierId(sup.id);
+      if (emailList.length > 0) setMainEmail(emailList[0]);
       setShowAddSupplier(false);
       setNewSupName("");
       setNewSupAbbr("");
       setNewSupNum("0");
+      setNewSupEmails("");
     } catch {
       setAddSupError("Network error while adding supplier.");
     } finally {
@@ -240,6 +297,10 @@ export default function POForm({
       if (!Number.isFinite(qn) || qn <= 0) e[`item-${i}-qty`] = "> 0";
       const pn = parseFloat(it.unitPrice);
       if (!Number.isFinite(pn) || pn < 0) e[`item-${i}-price`] = "≥ 0";
+      if (it.taxRate) {
+        const tn = parseFloat(it.taxRate);
+        if (!Number.isFinite(tn) || tn < 0) e[`item-${i}-tax`] = "≥ 0";
+      }
     });
 
     return e;
@@ -270,6 +331,7 @@ export default function POForm({
           description: it.description.trim(),
           quantity: parseFloat(it.quantity),
           unitPrice: parseFloat(it.unitPrice),
+          taxRate: parseFloat(it.taxRate) || 0,
         })),
     };
   }
@@ -438,7 +500,7 @@ export default function POForm({
               <select
                 className={`input ${errors.supplier ? "input-invalid" : ""}`}
                 value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
+                onChange={(e) => selectSupplier(e.target.value)}
               >
                 <option value="">— Select supplier —</option>
                 {suppliers.map((s) => (
@@ -472,21 +534,54 @@ export default function POForm({
             <label className="field-label">Main Email *</label>
             <input
               type="email"
+              list="supplier-emails"
               className={`input ${errors.mainEmail ? "input-invalid" : ""}`}
               value={mainEmail}
               onChange={(e) => setMainEmail(e.target.value)}
               placeholder="supplier@example.com"
             />
+            {supplierEmails.length > 0 && (
+              <p className="mt-1 text-xs text-slate-500">
+                Supplier emails (click to use as main):{" "}
+                {supplierEmails.map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    className="mr-1 rounded bg-brand-50 px-1.5 py-0.5 text-brand-700 hover:bg-brand-100"
+                    onClick={() => setMainEmail(em)}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </p>
+            )}
             {errors.mainEmail && <p className="error-text">{errors.mainEmail}</p>}
           </div>
 
           <div>
             <label className="field-label">CC Emails</label>
+            {supplierEmails.length > 0 && (
+              <p className="mb-1 text-xs text-slate-500">
+                Add supplier email:{" "}
+                {supplierEmails.map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    className="mr-1 rounded bg-brand-50 px-1.5 py-0.5 text-brand-700 hover:bg-brand-100 disabled:opacity-40"
+                    onClick={() => addCcEmail(em)}
+                    disabled={ccEmails.includes(em)}
+                  >
+                    + {em}
+                  </button>
+                ))}
+              </p>
+            )}
             <div className="space-y-2">
               {ccEmails.map((cc, i) => (
                 <div key={i} className="flex gap-2">
                   <input
                     type="email"
+                    list="supplier-emails"
                     className={`input ${errors[`cc-${i}`] ? "input-invalid" : ""}`}
                     value={cc}
                     onChange={(e) => updateCc(i, e.target.value)}
@@ -507,6 +602,13 @@ export default function POForm({
               </button>
             </div>
           </div>
+
+          {/* Shared datalist of the selected supplier's emails */}
+          <datalist id="supplier-emails">
+            {supplierEmails.map((em) => (
+              <option key={em} value={em} />
+            ))}
+          </datalist>
 
           <div>
             <label className="field-label">
@@ -616,8 +718,9 @@ export default function POForm({
               <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-2 py-2">Item Code</th>
                 <th className="px-2 py-2">Description</th>
-                <th className="px-2 py-2 w-24">Qty</th>
-                <th className="px-2 py-2 w-32">Unit Price</th>
+                <th className="px-2 py-2 w-20">Qty</th>
+                <th className="px-2 py-2 w-28">Unit Price</th>
+                <th className="px-2 py-2 w-20">Tax %</th>
                 <th className="px-2 py-2 w-32 text-right">Line Total</th>
                 <th className="px-2 py-2 w-10"></th>
               </tr>
@@ -663,6 +766,18 @@ export default function POForm({
                       placeholder="0.00"
                     />
                   </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className={`input ${errors[`item-${i}-tax`] ? "input-invalid" : ""}`}
+                      value={it.taxRate}
+                      onChange={(e) => updateItem(it.key, { taxRate: e.target.value })}
+                      placeholder="0"
+                      title="Optional VAT % for this item"
+                    />
+                  </td>
                   <td className="px-2 py-1.5 text-right font-medium text-slate-800">
                     {formatAmount(lineTotal(it.quantity, it.unitPrice), currency)}
                   </td>
@@ -682,10 +797,27 @@ export default function POForm({
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={4} className="px-2 py-3 text-right font-semibold text-slate-700">
+                <td colSpan={4} rowSpan={3} className="hidden sm:table-cell"></td>
+                <td colSpan={1} className="px-2 pt-3 text-right text-slate-500">
+                  Subtotal
+                </td>
+                <td className="px-2 pt-3 text-right font-medium text-slate-700">
+                  {formatAmount(subtotal, currency)}
+                </td>
+                <td></td>
+              </tr>
+              <tr>
+                <td className="px-2 py-1 text-right text-slate-500">Tax</td>
+                <td className="px-2 py-1 text-right font-medium text-slate-700">
+                  {formatAmount(taxTotal, currency)}
+                </td>
+                <td></td>
+              </tr>
+              <tr>
+                <td className="px-2 pb-3 text-right font-semibold text-slate-700">
                   Grand Total
                 </td>
-                <td className="px-2 py-3 text-right text-lg font-bold text-brand-600">
+                <td className="px-2 pb-3 text-right text-lg font-bold text-brand-600">
                   {formatAmount(grandTotal, currency)}
                 </td>
                 <td></td>
@@ -762,6 +894,20 @@ export default function POForm({
                 <p className="mt-1 text-xs text-slate-500">
                   The last PO number already used for this supplier this year. The
                   next PO will continue from here (e.g. 18 → next is 019).
+                </p>
+              </div>
+              <div>
+                <label className="field-label">Supplier Emails (optional)</label>
+                <textarea
+                  className="input"
+                  rows={2}
+                  value={newSupEmails}
+                  onChange={(e) => setNewSupEmails(e.target.value)}
+                  placeholder="one per line, or comma-separated"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  These show up as choices for Main Email and CC when this supplier
+                  is selected.
                 </p>
               </div>
             </div>

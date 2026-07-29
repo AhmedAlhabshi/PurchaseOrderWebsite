@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
           quantity: it.quantity,
           unitPrice: it.unitPrice,
           lineTotal: computeLineTotal(it.quantity, it.unitPrice),
+          taxRate: it.taxRate,
           sortOrder: idx,
         })),
       },

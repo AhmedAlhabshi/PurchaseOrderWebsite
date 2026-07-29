@@ -9,6 +9,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import { formatAmount, formatNumber, formatDate } from "./format";
+import { computeSubtotal, computeTaxTotal } from "./validation";
 import { HERO_DATA_URI } from "./heroImage";
 
 // The company hero (logos + name band + "Purchase Order" title) is reproduced
@@ -33,6 +34,7 @@ export type PODocData = {
     description: string;
     quantity: number;
     unitPrice: number;
+    taxRate?: number;
   }[];
   grandTotal: number;
 };
@@ -42,6 +44,7 @@ const LABEL_BG = "#dbeafe";
 const LABEL_TX = "#0b4a8f";
 const BORDER = "#c7d2e0";
 const ALT = "#f1f6fc";
+const GRAY = "#475569";
 
 const styles = StyleSheet.create({
   page: {
@@ -92,30 +95,37 @@ const styles = StyleSheet.create({
   trAlt: { backgroundColor: ALT },
   cell: { paddingVertical: 4.5, paddingHorizontal: 5 },
 
-  cNo: { width: "6%", textAlign: "center" },
-  cCode: { width: "16%" },
-  cDesc: { width: "38%" },
-  cQty: { width: "10%", textAlign: "right" },
-  cPrice: { width: "15%", textAlign: "right" },
-  cTotal: { width: "15%", textAlign: "right" },
+  cNo: { width: "5%", textAlign: "center" },
+  cCode: { width: "14%" },
+  cDesc: { width: "34%" },
+  cQty: { width: "9%", textAlign: "right" },
+  cPrice: { width: "13%", textAlign: "right" },
+  cTax: { width: "8%", textAlign: "right" },
+  cTotal: { width: "17%", textAlign: "right" },
 
-  totalRow: { flexDirection: "row", backgroundColor: NAVY },
-  totalLabel: {
-    flex: 1,
-    color: "#ffffff",
-    fontFamily: "Helvetica-Bold",
-    textAlign: "right",
+  // Totals block (right-aligned) under the items table.
+  totalsWrap: { flexDirection: "row", justifyContent: "flex-end" },
+  totalsBox: { width: "45%" },
+  totRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderTopWidth: 0,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  totRowFirst: { borderTopWidth: 1 },
+  totLabel: { color: GRAY },
+  totVal: { fontFamily: "Helvetica-Bold" },
+  grandRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: NAVY,
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
-  totalValue: {
-    width: "15%",
-    color: "#ffffff",
-    fontFamily: "Helvetica-Bold",
-    textAlign: "right",
-    paddingVertical: 6,
-    paddingHorizontal: 5,
-  },
+  grandText: { color: "#ffffff", fontFamily: "Helvetica-Bold", fontSize: 11 },
 
   footer: {
     position: "absolute",
@@ -152,6 +162,8 @@ function Field({
 function POPdf({ data }: { data: PODocData }) {
   const lineTotal = (q: number, p: number) => Math.round(q * p * 100) / 100;
   const cc = data.ccEmails.filter(Boolean);
+  const subtotal = computeSubtotal(data.items);
+  const taxTotal = computeTaxTotal(data.items);
 
   return (
     <Document
@@ -212,6 +224,7 @@ function POPdf({ data }: { data: PODocData }) {
               <Text style={[styles.thCell, styles.cDesc]}>Item Description</Text>
               <Text style={[styles.thCell, styles.cQty]}>Qty.</Text>
               <Text style={[styles.thCell, styles.cPrice]}>Unit Price</Text>
+              <Text style={[styles.thCell, styles.cTax]}>Tax %</Text>
               <Text style={[styles.thCell, styles.cTotal]}>Line Total</Text>
             </View>
 
@@ -230,17 +243,37 @@ function POPdf({ data }: { data: PODocData }) {
                 <Text style={[styles.cell, styles.cPrice]}>
                   {formatAmount(it.unitPrice, data.currency)}
                 </Text>
+                <Text style={[styles.cell, styles.cTax]}>
+                  {it.taxRate ? `${formatNumber(it.taxRate)}%` : "—"}
+                </Text>
                 <Text style={[styles.cell, styles.cTotal]}>
                   {formatAmount(lineTotal(it.quantity, it.unitPrice), data.currency)}
                 </Text>
               </View>
             ))}
+          </View>
 
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>TOTAL:</Text>
-              <Text style={styles.totalValue}>
-                {formatAmount(data.grandTotal, data.currency)}
-              </Text>
+          {/* Totals: Subtotal / Tax / Grand Total */}
+          <View style={styles.totalsWrap}>
+            <View style={styles.totalsBox}>
+              <View style={[styles.totRow, styles.totRowFirst]}>
+                <Text style={styles.totLabel}>Subtotal</Text>
+                <Text style={styles.totVal}>
+                  {formatAmount(subtotal, data.currency)}
+                </Text>
+              </View>
+              <View style={styles.totRow}>
+                <Text style={styles.totLabel}>Tax</Text>
+                <Text style={styles.totVal}>
+                  {formatAmount(taxTotal, data.currency)}
+                </Text>
+              </View>
+              <View style={styles.grandRow}>
+                <Text style={styles.grandText}>TOTAL</Text>
+                <Text style={styles.grandText}>
+                  {formatAmount(data.grandTotal, data.currency)}
+                </Text>
+              </View>
             </View>
           </View>
         </View>

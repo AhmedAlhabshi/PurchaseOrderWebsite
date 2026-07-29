@@ -66,6 +66,7 @@ export async function POST(
       quantity: it.quantity,
       unitPrice: it.unitPrice,
       lineTotal: computeLineTotal(it.quantity, it.unitPrice),
+      taxRate: it.taxRate,
       receivedQty,
       sortOrder: idx,
     };

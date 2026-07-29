@@ -7,6 +7,12 @@ export const itemSchema = z.object({
   description: z.string().trim().min(1, "Description is required"),
   quantity: z.coerce.number().positive("Quantity must be greater than 0"),
   unitPrice: z.coerce.number().min(0, "Unit price cannot be negative"),
+  taxRate: z.coerce
+    .number()
+    .min(0, "Tax cannot be negative")
+    .max(100, "Tax percent looks too high")
+    .optional()
+    .default(0),
 });
 
 export const poInputSchema = z.object({
@@ -32,16 +38,41 @@ export const poInputSchema = z.object({
 
 export type POInput = z.infer<typeof poInputSchema>;
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 export function computeLineTotal(quantity: number, unitPrice: number): number {
-  return Math.round(quantity * unitPrice * 100) / 100;
+  return round2(quantity * unitPrice);
 }
 
-export function computeGrandTotal(
-  items: { quantity: number; unitPrice: number }[]
+// Tax amount for one line (line total × tax%).
+export function computeLineTax(
+  quantity: number,
+  unitPrice: number,
+  taxRate = 0
 ): number {
-  const total = items.reduce(
-    (sum, it) => sum + computeLineTotal(it.quantity, it.unitPrice),
-    0
+  return round2((computeLineTotal(quantity, unitPrice) * (taxRate || 0)) / 100);
+}
+
+type TaxableItem = { quantity: number; unitPrice: number; taxRate?: number };
+
+// Sum of line totals before tax.
+export function computeSubtotal(items: TaxableItem[]): number {
+  return round2(
+    items.reduce((sum, it) => sum + computeLineTotal(it.quantity, it.unitPrice), 0)
   );
-  return Math.round(total * 100) / 100;
+}
+
+// Sum of all line taxes.
+export function computeTaxTotal(items: TaxableItem[]): number {
+  return round2(
+    items.reduce(
+      (sum, it) => sum + computeLineTax(it.quantity, it.unitPrice, it.taxRate),
+      0
+    )
+  );
+}
+
+// Grand total = subtotal + tax.
+export function computeGrandTotal(items: TaxableItem[]): number {
+  return round2(computeSubtotal(items) + computeTaxTotal(items));
 }
