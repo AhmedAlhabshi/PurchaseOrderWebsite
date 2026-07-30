@@ -8,13 +8,10 @@ import {
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import { formatAmount, formatNumber, formatDate } from "./format";
 import { computeSubtotal, computeTaxTotal } from "./validation";
 import { HERO_DATA_URI } from "./heroImage";
-import { COMPANY } from "./company";
+import { COMPANY, PO_NOTES } from "./company";
 
-// The company hero (logos + name band + contact info) is reproduced exactly from
-// the customer's template as a single embedded image at the top.
 const heroDataUri = HERO_DATA_URI;
 
 export type PODocData = {
@@ -41,167 +38,184 @@ export type PODocData = {
   grandTotal: number;
 };
 
-const NAVY = "#0b4a8f";
-const NAVY_DARK = "#0a3d75";
-const LABEL_TX = "#0b4a8f";
-const BORDER = "#d5deea";
-const ALT = "#f2f6fc";
-const GRAY = "#5b6b7f";
-const TITLE = "#0f2b4c";
+// Palette — warm, editorial
+const CREAM = "#F7F5F0";
+const NAVY = "#16283F";
+const ACCENT = "#3D78C0";
+const INK = "#1C2A3A";
+const MUTED = "#94908A";
+const UNITBLUE = "#5C7CA0";
+const RULE = "#DAD6CE";
+const RULE_DARK = "#2A3B52";
+
+// Layout geometry (A4 = 595 x 842 pt)
+const M = 40; // page margin
+const SB_W = 52; // sidebar width
+const SB_GAP = 20; // gap between sidebar and content
+const HERO_H = 107; // hero height at content width (ratio ~4.82)
+const SB_TOP = 30 + HERO_H + 24; // below hero
+const SB_BOTTOM = 46; // gap above footer
+const SB_H = 842 - SB_TOP - SB_BOTTOM;
+
+const serif = "Times-Roman";
+const serifB = "Times-Bold";
+const serifI = "Times-Italic";
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 0,
+    backgroundColor: CREAM,
+    paddingTop: 30,
+    paddingHorizontal: M,
     paddingBottom: 40,
-    paddingHorizontal: 0,
-    fontSize: 9,
-    color: "#1f2937",
     fontFamily: "Helvetica",
+    color: INK,
   },
-  hero: { width: "100%" },
-  body: { paddingHorizontal: 34, paddingTop: 10 },
+  hero: { width: "100%", height: HERO_H, borderRadius: 6, objectFit: "contain" },
 
-  // Top row: supplier card + PO identity
-  topRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
-  supplierCard: {
-    flex: 1.9,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 6,
-    overflow: "hidden",
+  // Sidebar
+  sidebar: {
+    position: "absolute",
+    left: M,
+    top: SB_TOP,
+    width: SB_W,
+    height: SB_H,
+    backgroundColor: NAVY,
   },
-  poCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: NAVY,
-    borderRadius: 6,
-    overflow: "hidden",
+  sidebarAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: SB_W,
+    height: 64,
+    backgroundColor: ACCENT,
   },
-  poNumLabel: { backgroundColor: NAVY, paddingVertical: 5, paddingHorizontal: 10 },
-  poNumLabelText: {
-    color: "#ffffff",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
+  sidebarTitle: {
+    position: "absolute",
+    width: SB_H,
+    top: (SB_H - 34) / 2,
+    left: (SB_W - SB_H) / 2,
+    transform: "rotate(-90deg)",
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontFamily: serif,
+    fontSize: 26,
+  },
+  sidebarRef: {
+    position: "absolute",
+    width: 150,
+    top: SB_H - 88,
+    left: (SB_W - 150) / 2,
+    transform: "rotate(-90deg)",
+    textAlign: "center",
+    color: "#8FA9C8",
+    fontFamily: "Helvetica",
+    fontSize: 7,
     letterSpacing: 1,
   },
-  poCardBody: { padding: 10 },
-  poNumValue: { fontFamily: "Helvetica-Bold", fontSize: 14, color: NAVY },
-  poDateLabel: { fontSize: 7, color: GRAY, marginTop: 8 },
-  poDateValue: { fontFamily: "Helvetica-Bold", fontSize: 11, color: TITLE, marginTop: 1 },
 
-  // Info cards
-  cardHead: {
-    backgroundColor: NAVY,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+  content: { marginLeft: SB_W + SB_GAP, marginTop: 24 },
+
+  label: {
+    fontSize: 7.5,
+    letterSpacing: 1.6,
+    color: MUTED,
+    fontFamily: "Helvetica",
   },
-  cardHeadText: { color: "#ffffff", fontFamily: "Helvetica-Bold", fontSize: 9 },
-  cardBody: { padding: 8 },
-  kv: { flexDirection: "row", marginBottom: 4 },
-  k: { width: 92, color: GRAY },
-  v: { flex: 1, color: "#111827", fontFamily: "Helvetica-Bold" },
 
-  // Meta strip
-  metaStrip: {
+  refRow: {
     flexDirection: "row",
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 6,
-    marginBottom: 12,
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
-  metaCell: {
-    flex: 1,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRightWidth: 1,
-    borderRightColor: BORDER,
-  },
-  metaCellLast: { flex: 1, paddingVertical: 7, paddingHorizontal: 10 },
-  metaLabel: { fontSize: 7, color: GRAY, marginBottom: 2 },
-  metaValue: { fontFamily: "Helvetica-Bold", color: TITLE, fontSize: 9 },
+  refNumber: { fontFamily: serif, fontSize: 25, color: INK, marginTop: 4, letterSpacing: 1 },
+  dateValue: { fontFamily: serif, fontSize: 17, color: INK, marginTop: 4 },
 
-  // Items table
-  table: { borderWidth: 1, borderColor: NAVY, borderRadius: 3, marginBottom: 12 },
-  th: { flexDirection: "row", backgroundColor: NAVY },
-  thCell: {
-    color: "#ffffff",
-    fontFamily: "Helvetica-Bold",
-    paddingVertical: 5,
-    paddingHorizontal: 5,
-    fontSize: 8.5,
+  ruleThin: { borderTopWidth: 0.7, borderTopColor: RULE, marginVertical: 18 },
+  ruleThick: { borderTopWidth: 1.4, borderTopColor: RULE_DARK, marginVertical: 18 },
+
+  metaRow: { flexDirection: "row", marginBottom: 2 },
+  metaCol: { flex: 1, paddingRight: 10 },
+  metaValue: { fontFamily: serif, fontSize: 13, color: INK, marginTop: 4 },
+
+  // Table
+  tHead: { flexDirection: "row", marginBottom: 4 },
+  tRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 9,
+    borderBottomWidth: 0.5,
+    borderBottomColor: RULE,
   },
-  tr: { flexDirection: "row", borderTopWidth: 1, borderTopColor: BORDER },
-  trAlt: { backgroundColor: ALT },
-  cell: { paddingVertical: 5, paddingHorizontal: 5 },
-  cNo: { width: "6%", textAlign: "center" },
-  cDesc: { width: "40%" },
+  cNo: { width: "7%" },
   cCode: { width: "16%" },
+  cDesc: { width: "38%" },
   cQty: { width: "10%", textAlign: "right" },
-  cPrice: { width: "14%", textAlign: "right" },
-  cTotal: { width: "14%", textAlign: "right" },
+  cUnit: { width: "13%", textAlign: "right" },
+  cAmt: { width: "16%", textAlign: "right" },
 
-  // Bottom: totals (right) then prepared by (below)
-  totalsWrap: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 12 },
-  totalsBox: { width: "42%" },
+  no: { fontFamily: "Helvetica", fontSize: 8.5, color: MUTED, letterSpacing: 0.5 },
+  code: { fontFamily: "Helvetica", fontSize: 9, color: INK },
+  desc: { fontFamily: "Helvetica", fontSize: 9, color: INK },
+  qty: { fontFamily: "Helvetica", fontSize: 9.5, color: INK },
+  unit: { fontFamily: "Helvetica", fontSize: 9.5, color: UNITBLUE },
+  amt: { fontFamily: serif, fontSize: 13, color: INK },
+
+  // Bottom
+  bottom: { flexDirection: "row", marginTop: 22 },
+  bottomLeft: { flex: 1.15, paddingRight: 24 },
+  bottomRight: { flex: 1 },
+  noteText: { fontFamily: "Helvetica", fontSize: 8.5, color: "#555", lineHeight: 1.5, marginTop: 6 },
+  preparedName: { fontFamily: serif, fontSize: 14, color: INK, marginTop: 5 },
+  preparedContact: { fontFamily: "Helvetica", fontSize: 8, color: MUTED, marginTop: 3 },
+
   totRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderTopWidth: 0,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    alignItems: "center",
+    paddingVertical: 6,
   },
-  totRowFirst: { borderTopWidth: 1, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  totLabel: { color: GRAY },
-  totVal: { fontFamily: "Helvetica-Bold", color: "#111827" },
-  grandRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: NAVY,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-  },
-  grandText: { color: "#ffffff", fontFamily: "Helvetica-Bold", fontSize: 11 },
-
-  prepBox: {
-    width: "55%",
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 6,
-    overflow: "hidden",
-  },
+  totLabel: { fontFamily: "Helvetica", fontSize: 8.5, letterSpacing: 1.2, color: MUTED },
+  totValue: { fontFamily: serif, fontSize: 12, color: INK },
+  grandLabel: { fontFamily: "Helvetica", fontSize: 8, letterSpacing: 1.5, color: MUTED },
+  grandNumber: { fontFamily: serif, fontSize: 34, color: INK, lineHeight: 1 },
+  grandCurrency: { fontFamily: "Helvetica", fontSize: 9, color: MUTED, textAlign: "right", marginTop: 2 },
+  signature: { fontFamily: serifI, fontSize: 14, color: "#9A968E", marginTop: 5 },
 
   footer: {
     position: "absolute",
-    bottom: 18,
-    left: 34,
-    right: 34,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-    paddingTop: 6,
+    bottom: 20,
+    left: M,
+    right: M,
+    borderTopWidth: 0.7,
+    borderTopColor: RULE,
+    paddingTop: 7,
     flexDirection: "row",
     justifyContent: "space-between",
-    fontSize: 8,
-    color: GRAY,
   },
-  thanks: {
-    textAlign: "center",
-    color: NAVY,
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    marginTop: 14,
-    marginBottom: 4,
-  },
+  footText: { fontFamily: "Helvetica", fontSize: 7.5, letterSpacing: 0.8, color: MUTED },
 });
 
-function KV({ label, value }: { label: string; value: string }) {
+function money(n: number) {
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+function qtyFmt(n: number) {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+function dateFmt(d: string | Date) {
+  const dt = typeof d === "string" ? new Date(d) : d;
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  return `${dd} / ${mm} / ${dt.getUTCFullYear()}`;
+}
+
+function Field({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.kv}>
-      <Text style={styles.k}>{label}</Text>
-      <Text style={styles.v}>{value || "—"}</Text>
+    <View style={styles.metaCol}>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.metaValue}>{value || "—"}</Text>
     </View>
   );
 }
@@ -210,147 +224,132 @@ function POPdf({ data }: { data: PODocData }) {
   const lineTotal = (q: number, p: number) => Math.round(q * p * 100) / 100;
   const subtotal = computeSubtotal(data.items);
   const taxTotal = computeTaxTotal(data.items, data.taxRate);
+  const ref =
+    data.poNumber +
+    (data.revision && data.revision > 0 ? ` rev${data.revision}` : "");
 
   return (
-    <Document
-      title={`Purchase Order ${data.poNumber}`}
-      author={COMPANY.name}
-    >
-      <Page size="LETTER" style={styles.page}>
+    <Document title={`Purchase Order ${data.poNumber}`} author={COMPANY.name}>
+      <Page size="A4" style={styles.page}>
+        {/* Hero */}
         {heroDataUri ? (
           <Image src={heroDataUri} style={styles.hero} />
         ) : (
-          <Text style={{ textAlign: "center", fontSize: 18, marginTop: 20 }}>
-            {COMPANY.name}
-          </Text>
+          <Text style={{ textAlign: "center", fontSize: 18 }}>{COMPANY.name}</Text>
         )}
 
-        <View style={styles.body}>
-          {/* Supplier info + PO identity */}
-          <View style={styles.topRow}>
-            <View style={styles.supplierCard}>
-              <View style={styles.cardHead}>
-                <Text style={styles.cardHeadText}>Supplier Information</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <KV label="Supplier Name" value={data.supplierName} />
-                <KV label="Contact Person" value={data.attention || ""} />
-              </View>
-            </View>
-
-            <View style={styles.poCard}>
-              <View style={styles.poNumLabel}>
-                <Text style={styles.poNumLabelText}>PO NUMBER</Text>
-              </View>
-              <View style={styles.poCardBody}>
-                <Text style={styles.poNumValue}>
-                  {data.poNumber}
-                  {data.revision && data.revision > 0 ? ` (rev${data.revision})` : ""}
-                </Text>
-                <Text style={styles.poDateLabel}>Date</Text>
-                <Text style={styles.poDateValue}>{formatDate(data.poDate)}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Meta strip */}
-          <View style={styles.metaStrip}>
-            <View style={styles.metaCell}>
-              <Text style={styles.metaLabel}>Currency</Text>
-              <Text style={styles.metaValue}>{data.currency}</Text>
-            </View>
-            <View style={styles.metaCell}>
-              <Text style={styles.metaLabel}>Payment Terms</Text>
-              <Text style={styles.metaValue}>{data.paymentTerms || "—"}</Text>
-            </View>
-            <View style={styles.metaCellLast}>
-              <Text style={styles.metaLabel}>Shipping Method</Text>
-              <Text style={styles.metaValue}>{data.deliveryMethod}</Text>
-            </View>
-          </View>
-
-          {/* Items */}
-          <View style={styles.table}>
-            <View style={styles.th}>
-              <Text style={[styles.thCell, styles.cNo]}>No.</Text>
-              <Text style={[styles.thCell, styles.cDesc]}>Item Description</Text>
-              <Text style={[styles.thCell, styles.cCode]}>Item Code</Text>
-              <Text style={[styles.thCell, styles.cQty]}>Qty.</Text>
-              <Text style={[styles.thCell, styles.cPrice]}>Unit Price</Text>
-              <Text style={[styles.thCell, styles.cTotal]}>Line Total</Text>
-            </View>
-            {data.items.map((it, i) => (
-              <View
-                key={i}
-                style={i % 2 === 1 ? [styles.tr, styles.trAlt] : styles.tr}
-                wrap={false}
-              >
-                <Text style={[styles.cell, styles.cNo]}>{i + 1}</Text>
-                <Text style={[styles.cell, styles.cDesc]}>{it.description}</Text>
-                <Text style={[styles.cell, styles.cCode]}>{it.itemCode}</Text>
-                <Text style={[styles.cell, styles.cQty]}>
-                  {formatNumber(it.quantity)}
-                </Text>
-                <Text style={[styles.cell, styles.cPrice]}>
-                  {formatAmount(it.unitPrice, data.currency)}
-                </Text>
-                <Text style={[styles.cell, styles.cTotal]}>
-                  {formatAmount(lineTotal(it.quantity, it.unitPrice), data.currency)}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Totals — right-aligned under the price columns */}
-          <View style={styles.totalsWrap}>
-            <View style={styles.totalsBox}>
-              <View style={[styles.totRow, styles.totRowFirst]}>
-                <Text style={styles.totLabel}>Subtotal</Text>
-                <Text style={styles.totVal}>
-                  {formatAmount(subtotal, data.currency)}
-                </Text>
-              </View>
-              <View style={styles.totRow}>
-                <Text style={styles.totLabel}>
-                  {data.taxRate ? `Tax (${formatNumber(data.taxRate)}%)` : "Tax"}
-                </Text>
-                <Text style={styles.totVal}>
-                  {formatAmount(taxTotal, data.currency)}
-                </Text>
-              </View>
-              <View style={styles.grandRow}>
-                <Text style={styles.grandText}>Grand Total</Text>
-                <Text style={styles.grandText}>
-                  {formatAmount(data.grandTotal, data.currency)}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Prepared By — below the totals */}
-          <View style={styles.prepBox}>
-            <View style={styles.cardHead}>
-              <Text style={styles.cardHeadText}>Prepared By</Text>
-            </View>
-            <View style={styles.cardBody}>
-              <KV label="Name" value={data.preparedBy} />
-              {data.preparedByPhone ? (
-                <KV label="Phone" value={data.preparedByPhone} />
-              ) : null}
-              {data.preparedByEmail ? (
-                <KV label="Email" value={data.preparedByEmail} />
-              ) : null}
-            </View>
-          </View>
-
-          <Text style={styles.thanks}>Thank you for your cooperation</Text>
+        {/* Vertical sidebar */}
+        <View style={styles.sidebar}>
+          <View style={styles.sidebarAccent} />
+          <Text style={styles.sidebarTitle}>Purchase Order</Text>
+          <Text style={styles.sidebarRef}>{data.poNumber}</Text>
         </View>
 
+        {/* Main content */}
+        <View style={styles.content}>
+          <View style={styles.refRow}>
+            <View>
+              <Text style={styles.label}>OUR REFERENCE</Text>
+              <Text style={styles.refNumber}>{ref}</Text>
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={styles.label}>DATE ISSUED</Text>
+              <Text style={styles.dateValue}>{dateFmt(data.poDate)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.ruleThin} />
+
+          <View style={styles.metaRow}>
+            <Field label="SUPPLIER" value={data.supplierName} />
+            <Field label="ATTENTION" value={data.attention || ""} />
+            <Field label="CURRENCY" value={data.currency} />
+          </View>
+          <View style={[styles.metaRow, { marginTop: 16 }]}>
+            <Field label="DELIVERY" value={data.deliveryMethod} />
+            <Field label="PAYMENT TERMS" value={data.paymentTerms || ""} />
+            <View style={styles.metaCol} />
+          </View>
+
+          <View style={styles.ruleThick} />
+
+          {/* Items */}
+          <View style={styles.tHead}>
+            <Text style={[styles.cNo, styles.label]}>NO.</Text>
+            <Text style={[styles.cCode, styles.label]}>ITEM CODE</Text>
+            <Text style={[styles.cDesc, styles.label]}>DESCRIPTION</Text>
+            <Text style={[styles.cQty, styles.label]}>QTY</Text>
+            <Text style={[styles.cUnit, styles.label]}>UNIT</Text>
+            <Text style={[styles.cAmt, styles.label]}>AMOUNT</Text>
+          </View>
+          {data.items.map((it, i) => (
+            <View key={i} style={styles.tRow} wrap={false}>
+              <Text style={[styles.cNo, styles.no]}>
+                {String(i + 1).padStart(2, "0")}
+              </Text>
+              <Text style={[styles.cCode, styles.code]}>{it.itemCode || "—"}</Text>
+              <Text style={[styles.cDesc, styles.desc]}>{it.description}</Text>
+              <Text style={[styles.cQty, styles.qty]}>{qtyFmt(it.quantity)}</Text>
+              <Text style={[styles.cUnit, styles.unit]}>{money(it.unitPrice)}</Text>
+              <Text style={[styles.cAmt, styles.amt]}>
+                {money(lineTotal(it.quantity, it.unitPrice))}
+              </Text>
+            </View>
+          ))}
+
+          {/* Bottom */}
+          <View style={styles.bottom}>
+            <View style={styles.bottomLeft}>
+              <Text style={styles.label}>NOTES</Text>
+              <Text style={styles.noteText}>{PO_NOTES}</Text>
+
+              <View style={{ marginTop: 20 }}>
+                <Text style={styles.label}>PREPARED BY</Text>
+                <Text style={styles.preparedName}>{data.preparedBy}</Text>
+                {data.preparedByPhone || data.preparedByEmail ? (
+                  <Text style={styles.preparedContact}>
+                    {[data.preparedByPhone, data.preparedByEmail]
+                      .filter(Boolean)
+                      .join("  ·  ")}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={styles.bottomRight}>
+              <View style={{ borderTopWidth: 0.7, borderTopColor: RULE }} />
+              <View style={styles.totRow}>
+                <Text style={styles.totLabel}>SUBTOTAL</Text>
+                <Text style={styles.totValue}>{money(subtotal)}</Text>
+              </View>
+              {data.taxRate ? (
+                <View style={[styles.totRow, { paddingTop: 0 }]}>
+                  <Text style={styles.totLabel}>TAX ({qtyFmt(data.taxRate)}%)</Text>
+                  <Text style={styles.totValue}>{money(taxTotal)}</Text>
+                </View>
+              ) : null}
+
+              <View style={{ borderTopWidth: 0.7, borderTopColor: RULE, marginTop: 6, paddingTop: 12 }}>
+                <Text style={styles.grandLabel}>TOTAL ORDER VALUE</Text>
+                <Text style={styles.grandNumber}>{money(data.grandTotal)}</Text>
+                <Text style={styles.grandCurrency}>{data.currency}</Text>
+              </View>
+
+              <View style={{ marginTop: 22 }}>
+                <Text style={styles.label}>SUPPLIER CONFIRMATION</Text>
+                <Text style={styles.signature}>Signature &amp; stamp</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Footer */}
         <View style={styles.footer} fixed>
-          <Text>
-            {COMPANY.phone}  ·  {COMPANY.email}
+          <Text style={styles.footText}>
+            {COMPANY.name.toUpperCase()}      {COMPANY.website}  ·  {COMPANY.email}
           </Text>
           <Text
+            style={styles.footText}
             render={({ pageNumber, totalPages }) =>
               `Page ${pageNumber} of ${totalPages}`
             }
