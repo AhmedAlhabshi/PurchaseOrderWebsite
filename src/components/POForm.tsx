@@ -33,12 +33,12 @@ export type POFormInitial = {
   currency: string;
   preparedBy: string;
   revision: number;
+  taxRate: number;
   items: {
     itemCode: string;
     description: string;
     quantity: number;
     unitPrice: number;
-    taxRate: number;
   }[];
 };
 
@@ -48,7 +48,6 @@ type ItemRow = {
   description: string;
   quantity: string;
   unitPrice: string;
-  taxRate: string;
 };
 
 type Errors = Record<string, string>;
@@ -66,7 +65,6 @@ function emptyItem(): ItemRow {
     description: "",
     quantity: "",
     unitPrice: "",
-    taxRate: "",
   };
 }
 
@@ -116,6 +114,9 @@ export default function POForm({
   const [preparedBy, setPreparedBy] = useState(
     initial?.preparedBy || DEFAULT_PREPARED_BY
   );
+  const [taxRate, setTaxRate] = useState(
+    initial?.taxRate ? String(initial.taxRate) : ""
+  );
   const [items, setItems] = useState<ItemRow[]>(
     initial && initial.items.length
       ? initial.items.map((it) => ({
@@ -124,7 +125,6 @@ export default function POForm({
           description: it.description,
           quantity: String(it.quantity),
           unitPrice: String(it.unitPrice),
-          taxRate: it.taxRate ? String(it.taxRate) : "",
         }))
       : [emptyItem()]
   );
@@ -188,21 +188,14 @@ export default function POForm({
     if (!Number.isFinite(qn) || !Number.isFinite(pn)) return 0;
     return Math.round(qn * pn * 100) / 100;
   };
-  const lineTax = (q: string, p: string, t: string) => {
-    const tn = parseFloat(t);
-    if (!Number.isFinite(tn) || tn <= 0) return 0;
-    return Math.round(lineTotal(q, p) * tn) / 100;
-  };
 
   const { subtotal, taxTotal, grandTotal } = useMemo(() => {
-    const sub = items.reduce((s, it) => s + lineTotal(it.quantity, it.unitPrice), 0);
-    const tax = items.reduce(
-      (s, it) => s + lineTax(it.quantity, it.unitPrice, it.taxRate),
-      0
-    );
     const r2 = (n: number) => Math.round(n * 100) / 100;
-    return { subtotal: r2(sub), taxTotal: r2(tax), grandTotal: r2(sub + tax) };
-  }, [items]);
+    const sub = r2(items.reduce((s, it) => s + lineTotal(it.quantity, it.unitPrice), 0));
+    const rate = parseFloat(taxRate);
+    const tax = Number.isFinite(rate) && rate > 0 ? r2((sub * rate) / 100) : 0;
+    return { subtotal: sub, taxTotal: tax, grandTotal: r2(sub + tax) };
+  }, [items, taxRate]);
 
   // ----- CC helpers -----
   const addCc = () => setCcEmails((cc) => [...cc, ""]);
@@ -282,34 +275,31 @@ export default function POForm({
       if (c.trim() && !EMAIL_RE.test(c.trim())) e[`cc-${i}`] = "Invalid email";
     });
 
-    const anyValidItem = items.some(
-      (it) => it.itemCode.trim() || it.description.trim() || it.quantity || it.unitPrice
-    );
-    if (!anyValidItem) e.items = "Add at least one item";
-
+    // Item fields are all optional. Only flag negative numbers when entered.
     items.forEach((it, i) => {
-      const filled =
-        it.itemCode.trim() || it.description.trim() || it.quantity || it.unitPrice;
-      if (!filled) return;
-      if (!it.itemCode.trim()) e[`item-${i}-code`] = "Required";
-      if (!it.description.trim()) e[`item-${i}-desc`] = "Required";
-      const qn = parseFloat(it.quantity);
-      if (!Number.isFinite(qn) || qn <= 0) e[`item-${i}-qty`] = "> 0";
-      const pn = parseFloat(it.unitPrice);
-      if (!Number.isFinite(pn) || pn < 0) e[`item-${i}-price`] = "≥ 0";
-      if (it.taxRate) {
-        const tn = parseFloat(it.taxRate);
-        if (!Number.isFinite(tn) || tn < 0) e[`item-${i}-tax`] = "≥ 0";
+      if (it.quantity) {
+        const qn = parseFloat(it.quantity);
+        if (!Number.isFinite(qn) || qn < 0) e[`item-${i}-qty`] = "≥ 0";
+      }
+      if (it.unitPrice) {
+        const pn = parseFloat(it.unitPrice);
+        if (!Number.isFinite(pn) || pn < 0) e[`item-${i}-price`] = "≥ 0";
       }
     });
+
+    if (taxRate) {
+      const tn = parseFloat(taxRate);
+      if (!Number.isFinite(tn) || tn < 0) e.taxRate = "≥ 0";
+    }
 
     return e;
   }
 
-  function buildPayload() {
+  function buildPayload(send = true) {
     return {
       supplierId,
       revision: nextRevision,
+      send,
       supplierName: selectedSupplier?.name || initial?.supplierName || "",
       attention: attention.trim(),
       mainEmail: mainEmail.trim(),
@@ -321,19 +311,32 @@ export default function POForm({
       paymentTerms: paymentTerms.trim(),
       currency,
       preparedBy: preparedBy.trim(),
-      items: items
-        .filter(
-          (it) =>
-            it.itemCode.trim() || it.description.trim() || it.quantity || it.unitPrice
-        )
-        .map((it) => ({
-          itemCode: it.itemCode.trim(),
-          description: it.description.trim(),
-          quantity: parseFloat(it.quantity),
-          unitPrice: parseFloat(it.unitPrice),
-          taxRate: parseFloat(it.taxRate) || 0,
-        })),
+      taxRate: parseFloat(taxRate) || 0,
+      items: mappedItems(),
     };
+  }
+
+  // Item fields are optional. Keep rows that have any content; if all are empty,
+  // still send one blank row so the PDF can be generated.
+  function mappedItems() {
+    const num = (v: string) => {
+      const n = parseFloat(v);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    };
+    const rows = items
+      .filter(
+        (it) =>
+          it.itemCode.trim() || it.description.trim() || it.quantity || it.unitPrice
+      )
+      .map((it) => ({
+        itemCode: it.itemCode.trim(),
+        description: it.description.trim(),
+        quantity: num(it.quantity),
+        unitPrice: num(it.unitPrice),
+      }));
+    return rows.length > 0
+      ? rows
+      : [{ itemCode: "", description: "", quantity: 0, unitPrice: 0 }];
   }
 
   // ----- Actions -----
@@ -371,7 +374,7 @@ export default function POForm({
     }
   }
 
-  async function handleApproveSend() {
+  async function handleApproveSend(send = true) {
     if (sendingRef.current) return;
     sendingRef.current = true;
     setSending(true);
@@ -383,7 +386,7 @@ export default function POForm({
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
+        body: JSON.stringify(buildPayload(send)),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -442,10 +445,20 @@ export default function POForm({
           >
             ← Back to Edit
           </button>
+          {!isEdit && (
+            <button
+              type="button"
+              className="btn-secondary btn-lg"
+              onClick={() => handleApproveSend(false)}
+              disabled={sending}
+            >
+              {sending ? "Saving…" : "Save without sending"}
+            </button>
+          )}
           <button
             type="button"
             className="btn-success btn-lg"
-            onClick={handleApproveSend}
+            onClick={() => handleApproveSend(true)}
             disabled={sending}
           >
             {sending
@@ -699,6 +712,20 @@ export default function POForm({
             />
             {errors.preparedBy && <p className="error-text">{errors.preparedBy}</p>}
           </div>
+
+          <div>
+            <label className="field-label">Tax % (whole order, optional)</label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              className={`input ${errors.taxRate ? "input-invalid" : ""}`}
+              value={taxRate}
+              onChange={(e) => setTaxRate(e.target.value)}
+              placeholder="e.g. 15"
+            />
+            {errors.taxRate && <p className="error-text">{errors.taxRate}</p>}
+          </div>
         </div>
       </section>
 
@@ -718,9 +745,8 @@ export default function POForm({
               <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-2 py-2">Item Code</th>
                 <th className="px-2 py-2">Description</th>
-                <th className="px-2 py-2 w-20">Qty</th>
-                <th className="px-2 py-2 w-28">Unit Price</th>
-                <th className="px-2 py-2 w-20">Tax %</th>
+                <th className="px-2 py-2 w-32">Qty</th>
+                <th className="px-2 py-2 w-32">Unit Price</th>
                 <th className="px-2 py-2 w-32 text-right">Line Total</th>
                 <th className="px-2 py-2 w-10"></th>
               </tr>
@@ -749,7 +775,7 @@ export default function POForm({
                       type="number"
                       min="0"
                       step="any"
-                      className={`input ${errors[`item-${i}-qty`] ? "input-invalid" : ""}`}
+                      className={`input text-right ${errors[`item-${i}-qty`] ? "input-invalid" : ""}`}
                       value={it.quantity}
                       onChange={(e) => updateItem(it.key, { quantity: e.target.value })}
                       placeholder="0"
@@ -760,22 +786,10 @@ export default function POForm({
                       type="number"
                       min="0"
                       step="any"
-                      className={`input ${errors[`item-${i}-price`] ? "input-invalid" : ""}`}
+                      className={`input text-right ${errors[`item-${i}-price`] ? "input-invalid" : ""}`}
                       value={it.unitPrice}
                       onChange={(e) => updateItem(it.key, { unitPrice: e.target.value })}
                       placeholder="0.00"
-                    />
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className={`input ${errors[`item-${i}-tax`] ? "input-invalid" : ""}`}
-                      value={it.taxRate}
-                      onChange={(e) => updateItem(it.key, { taxRate: e.target.value })}
-                      placeholder="0"
-                      title="Optional VAT % for this item"
                     />
                   </td>
                   <td className="px-2 py-1.5 text-right font-medium text-slate-800">
@@ -797,17 +811,17 @@ export default function POForm({
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={4} rowSpan={3} className="hidden sm:table-cell"></td>
-                <td colSpan={1} className="px-2 pt-3 text-right text-slate-500">
-                  Subtotal
-                </td>
+                <td colSpan={3} rowSpan={3} className="hidden sm:table-cell"></td>
+                <td className="px-2 pt-3 text-right text-slate-500">Subtotal</td>
                 <td className="px-2 pt-3 text-right font-medium text-slate-700">
                   {formatAmount(subtotal, currency)}
                 </td>
                 <td></td>
               </tr>
               <tr>
-                <td className="px-2 py-1 text-right text-slate-500">Tax</td>
+                <td className="px-2 py-1 text-right text-slate-500">
+                  {parseFloat(taxRate) > 0 ? `Tax (${parseFloat(taxRate)}%)` : "Tax"}
+                </td>
                 <td className="px-2 py-1 text-right font-medium text-slate-700">
                   {formatAmount(taxTotal, currency)}
                 </td>

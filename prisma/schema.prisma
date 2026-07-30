@@ -54,6 +54,9 @@ model PurchaseOrder {
   // Revision (0 = original, 1 = rev1, ...)
   revision Int @default(0)
 
+  // Optional VAT percentage applied to the whole order (e.g. 15).
+  taxRate Float @default(0)
+
   // Totals
   grandTotal Float @default(0)
 
@@ -79,12 +82,11 @@ model PurchaseOrder {
 model POItem {
   id          String  @id @default(cuid())
   poId        String
-  itemCode    String
-  description String
-  quantity    Float
-  unitPrice   Float
-  lineTotal   Float
-  taxRate     Float   @default(0) // optional VAT percentage for this item (e.g. 15)
+  itemCode    String  @default("")
+  description String  @default("")
+  quantity    Float   @default(0)
+  unitPrice   Float   @default(0)
+  lineTotal   Float   @default(0)
   receivedQty Float   @default(0) // total quantity received so far (partial deliveries)
   sortOrder   Int     @default(0)
 

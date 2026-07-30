@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const data = parsed.data;
-  const grandTotal = computeGrandTotal(data.items);
+  const grandTotal = computeGrandTotal(data.items, data.taxRate);
 
   const pdf = await renderPOPdf({
     poNumber: data.poNumber,
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     currency: data.currency,
     preparedBy: data.preparedBy,
     items: data.items,
+    taxRate: data.taxRate,
     grandTotal,
   });
 

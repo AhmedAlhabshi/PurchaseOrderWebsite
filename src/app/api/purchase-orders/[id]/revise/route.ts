@@ -43,7 +43,7 @@ export async function POST(
   }
 
   const data = parsed.data;
-  const grandTotal = computeGrandTotal(data.items);
+  const grandTotal = computeGrandTotal(data.items, data.taxRate);
   const revision = existing.revision + 1;
   const poNumber = existing.poNumber;
 
@@ -66,7 +66,6 @@ export async function POST(
       quantity: it.quantity,
       unitPrice: it.unitPrice,
       lineTotal: computeLineTotal(it.quantity, it.unitPrice),
-      taxRate: it.taxRate,
       receivedQty,
       sortOrder: idx,
     };
@@ -91,6 +90,7 @@ export async function POST(
     currency: data.currency,
     preparedBy: data.preparedBy,
     items: data.items,
+    taxRate: data.taxRate,
     grandTotal,
   });
 
@@ -133,6 +133,7 @@ export async function POST(
         paymentTerms: data.paymentTerms || null,
         currency: data.currency,
         preparedBy: data.preparedBy,
+        taxRate: data.taxRate,
         grandTotal,
         revision,
         status: newStatus,

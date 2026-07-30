@@ -29,12 +29,12 @@ export type PODocData = {
   paymentTerms?: string | null;
   currency: string;
   preparedBy: string;
+  taxRate?: number;
   items: {
     itemCode: string;
     description: string;
     quantity: number;
     unitPrice: number;
-    taxRate?: number;
   }[];
   grandTotal: number;
 };
@@ -95,13 +95,12 @@ const styles = StyleSheet.create({
   trAlt: { backgroundColor: ALT },
   cell: { paddingVertical: 4.5, paddingHorizontal: 5 },
 
-  cNo: { width: "5%", textAlign: "center" },
-  cCode: { width: "14%" },
-  cDesc: { width: "34%" },
-  cQty: { width: "9%", textAlign: "right" },
-  cPrice: { width: "13%", textAlign: "right" },
-  cTax: { width: "8%", textAlign: "right" },
-  cTotal: { width: "17%", textAlign: "right" },
+  cNo: { width: "6%", textAlign: "center" },
+  cCode: { width: "16%" },
+  cDesc: { width: "38%" },
+  cQty: { width: "10%", textAlign: "right" },
+  cPrice: { width: "15%", textAlign: "right" },
+  cTotal: { width: "15%", textAlign: "right" },
 
   // Totals block (right-aligned) under the items table.
   totalsWrap: { flexDirection: "row", justifyContent: "flex-end" },
@@ -163,7 +162,7 @@ function POPdf({ data }: { data: PODocData }) {
   const lineTotal = (q: number, p: number) => Math.round(q * p * 100) / 100;
   const cc = data.ccEmails.filter(Boolean);
   const subtotal = computeSubtotal(data.items);
-  const taxTotal = computeTaxTotal(data.items);
+  const taxTotal = computeTaxTotal(data.items, data.taxRate);
 
   return (
     <Document
@@ -224,7 +223,6 @@ function POPdf({ data }: { data: PODocData }) {
               <Text style={[styles.thCell, styles.cDesc]}>Item Description</Text>
               <Text style={[styles.thCell, styles.cQty]}>Qty.</Text>
               <Text style={[styles.thCell, styles.cPrice]}>Unit Price</Text>
-              <Text style={[styles.thCell, styles.cTax]}>Tax %</Text>
               <Text style={[styles.thCell, styles.cTotal]}>Line Total</Text>
             </View>
 
@@ -243,9 +241,6 @@ function POPdf({ data }: { data: PODocData }) {
                 <Text style={[styles.cell, styles.cPrice]}>
                   {formatAmount(it.unitPrice, data.currency)}
                 </Text>
-                <Text style={[styles.cell, styles.cTax]}>
-                  {it.taxRate ? `${formatNumber(it.taxRate)}%` : "—"}
-                </Text>
                 <Text style={[styles.cell, styles.cTotal]}>
                   {formatAmount(lineTotal(it.quantity, it.unitPrice), data.currency)}
                 </Text>
@@ -263,7 +258,9 @@ function POPdf({ data }: { data: PODocData }) {
                 </Text>
               </View>
               <View style={styles.totRow}>
-                <Text style={styles.totLabel}>Tax</Text>
+                <Text style={styles.totLabel}>
+                  {data.taxRate ? `Tax (${formatNumber(data.taxRate)}%)` : "Tax"}
+                </Text>
                 <Text style={styles.totVal}>
                   {formatAmount(taxTotal, data.currency)}
                 </Text>

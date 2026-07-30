@@ -16,6 +16,7 @@ import Timeline, { TimelineState } from "@/components/Timeline";
 import TrackingPanel from "@/components/TrackingPanel";
 import ReceivingPanel, { ReceivingItem } from "@/components/ReceivingPanel";
 import DeletePOButton from "@/components/DeletePOButton";
+import SendEmailButton from "@/components/SendEmailButton";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +50,11 @@ export default async function PODetailsPage({
   const totalOrdered = po.items.reduce((s, it) => s + it.quantity, 0);
   const totalReceived = po.items.reduce((s, it) => s + it.receivedQty, 0);
   const subtotal = computeSubtotal(po.items);
-  const taxTotal = computeTaxTotal(po.items);
+  const taxTotal = computeTaxTotal(po.items, po.taxRate);
+  const isDraft = po.status === "DRAFT";
 
   const timeline: TimelineState = {
-    po_sent: true,
+    po_sent: !isDraft,
     order_confirmed: confirmed,
     expected_shipping: Boolean(po.expectedShipping),
     expected_arrival: Boolean(po.expectedArrival),
@@ -72,8 +74,19 @@ export default async function PODetailsPage({
 
   return (
     <div>
+      {/* Draft notice (persistent) */}
+      {isDraft && (
+        <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            📝 This purchase order is a <strong>draft</strong> — it has not been
+            sent to the supplier yet.
+          </span>
+          <SendEmailButton poId={po.id} mainEmail={po.mainEmail} />
+        </div>
+      )}
+
       {/* Created / revised banner */}
-      {(created || revised) && (
+      {(created || revised) && !isDraft && (
         <div
           className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
             po.emailMode === "sent"
@@ -178,7 +191,6 @@ export default async function PODetailsPage({
                     <th className="px-2 py-2">Description</th>
                     <th className="px-2 py-2 text-right">Qty</th>
                     <th className="px-2 py-2 text-right">Unit Price</th>
-                    <th className="px-2 py-2 text-right">Tax %</th>
                     <th className="px-2 py-2 text-right">Line Total</th>
                     <th className="px-2 py-2 text-right">Received</th>
                     <th className="px-2 py-2 text-right">Remaining</th>
@@ -196,9 +208,6 @@ export default async function PODetailsPage({
                         </td>
                         <td className="px-2 py-2 text-right text-slate-600">
                           {formatAmount(it.unitPrice, po.currency)}
-                        </td>
-                        <td className="px-2 py-2 text-right text-slate-600">
-                          {it.taxRate ? `${formatNumber(it.taxRate)}%` : "—"}
                         </td>
                         <td className="px-2 py-2 text-right font-medium text-slate-800">
                           {formatAmount(it.lineTotal, po.currency)}
@@ -219,7 +228,7 @@ export default async function PODetailsPage({
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-slate-200">
-                    <td colSpan={5} className="px-2 pt-3 text-right text-slate-500">
+                    <td colSpan={4} className="px-2 pt-3 text-right text-slate-500">
                       Subtotal
                     </td>
                     <td className="px-2 pt-3 text-right font-medium text-slate-700">
@@ -228,8 +237,8 @@ export default async function PODetailsPage({
                     <td colSpan={2}></td>
                   </tr>
                   <tr>
-                    <td colSpan={5} className="px-2 py-1 text-right text-slate-500">
-                      Tax
+                    <td colSpan={4} className="px-2 py-1 text-right text-slate-500">
+                      {po.taxRate ? `Tax (${formatNumber(po.taxRate)}%)` : "Tax"}
                     </td>
                     <td className="px-2 py-1 text-right font-medium text-slate-700">
                       {formatAmount(taxTotal, po.currency)}
@@ -237,7 +246,7 @@ export default async function PODetailsPage({
                     <td colSpan={2}></td>
                   </tr>
                   <tr>
-                    <td colSpan={5} className="px-2 pb-3 text-right font-semibold text-slate-700">
+                    <td colSpan={4} className="px-2 pb-3 text-right font-semibold text-slate-700">
                       Grand Total
                     </td>
                     <td className="px-2 pb-3 text-right text-lg font-bold text-brand-600">

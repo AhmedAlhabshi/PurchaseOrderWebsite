@@ -2,17 +2,13 @@ import { z } from "zod";
 
 // Shared validation used by the API and (loosely) by the client form.
 
+// All item fields are optional — the employee may not know a code/price yet and
+// can still generate a PO to review it.
 export const itemSchema = z.object({
-  itemCode: z.string().trim().min(1, "Item code is required"),
-  description: z.string().trim().min(1, "Description is required"),
-  quantity: z.coerce.number().positive("Quantity must be greater than 0"),
-  unitPrice: z.coerce.number().min(0, "Unit price cannot be negative"),
-  taxRate: z.coerce
-    .number()
-    .min(0, "Tax cannot be negative")
-    .max(100, "Tax percent looks too high")
-    .optional()
-    .default(0),
+  itemCode: z.string().trim().optional().default(""),
+  description: z.string().trim().optional().default(""),
+  quantity: z.coerce.number().min(0, "Quantity cannot be negative").optional().default(0),
+  unitPrice: z.coerce.number().min(0, "Unit price cannot be negative").optional().default(0),
 });
 
 export const poInputSchema = z.object({
@@ -33,6 +29,13 @@ export const poInputSchema = z.object({
   paymentTerms: z.string().trim().optional().default(""),
   currency: z.string().trim().min(1, "Currency is required"),
   preparedBy: z.string().trim().min(1, "Prepared by is required"),
+  // One tax percentage for the whole order (optional).
+  taxRate: z.coerce
+    .number()
+    .min(0, "Tax cannot be negative")
+    .max(100, "Tax percent looks too high")
+    .optional()
+    .default(0),
   items: z.array(itemSchema).min(1, "Add at least one item"),
 });
 
@@ -44,35 +47,21 @@ export function computeLineTotal(quantity: number, unitPrice: number): number {
   return round2(quantity * unitPrice);
 }
 
-// Tax amount for one line (line total × tax%).
-export function computeLineTax(
-  quantity: number,
-  unitPrice: number,
-  taxRate = 0
-): number {
-  return round2((computeLineTotal(quantity, unitPrice) * (taxRate || 0)) / 100);
-}
-
-type TaxableItem = { quantity: number; unitPrice: number; taxRate?: number };
+type LineItem = { quantity: number; unitPrice: number };
 
 // Sum of line totals before tax.
-export function computeSubtotal(items: TaxableItem[]): number {
+export function computeSubtotal(items: LineItem[]): number {
   return round2(
     items.reduce((sum, it) => sum + computeLineTotal(it.quantity, it.unitPrice), 0)
   );
 }
 
-// Sum of all line taxes.
-export function computeTaxTotal(items: TaxableItem[]): number {
-  return round2(
-    items.reduce(
-      (sum, it) => sum + computeLineTax(it.quantity, it.unitPrice, it.taxRate),
-      0
-    )
-  );
+// Order-level tax amount (subtotal × tax%).
+export function computeTaxTotal(items: LineItem[], taxRate = 0): number {
+  return round2((computeSubtotal(items) * (taxRate || 0)) / 100);
 }
 
-// Grand total = subtotal + tax.
-export function computeGrandTotal(items: TaxableItem[]): number {
-  return round2(computeSubtotal(items) + computeTaxTotal(items));
+// Grand total = subtotal + order tax.
+export function computeGrandTotal(items: LineItem[], taxRate = 0): number {
+  return round2(computeSubtotal(items) + computeTaxTotal(items, taxRate));
 }

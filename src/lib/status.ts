@@ -1,12 +1,14 @@
 // Central definition of Purchase Order statuses and the tracking timeline.
 
 export type POStatus =
+  | "DRAFT"
   | "PO_SENT"
   | "ORDER_CONFIRMED"
   | "PARTIALLY_ARRIVED"
   | "ARRIVED";
 
 export const STATUS_ORDER: POStatus[] = [
+  "DRAFT",
   "PO_SENT",
   "ORDER_CONFIRMED",
   "PARTIALLY_ARRIVED",
@@ -17,6 +19,11 @@ export const STATUS_META: Record<
   POStatus,
   { label: string; badge: string; dot: string }
 > = {
+  DRAFT: {
+    label: "Draft (not sent)",
+    badge: "bg-slate-100 text-slate-700 border border-slate-300",
+    dot: "bg-slate-400",
+  },
   PO_SENT: {
     label: "PO Sent",
     badge: "bg-blue-100 text-blue-800 border border-blue-200",

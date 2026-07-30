@@ -43,12 +43,12 @@ export default async function EditPOPage({
     currency: po.currency,
     preparedBy: po.preparedBy,
     revision: po.revision,
+    taxRate: po.taxRate,
     items: po.items.map((it) => ({
       itemCode: it.itemCode,
       description: it.description,
       quantity: it.quantity,
       unitPrice: it.unitPrice,
-      taxRate: it.taxRate,
     })),
   };
 
