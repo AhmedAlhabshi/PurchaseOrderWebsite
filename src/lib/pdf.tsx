@@ -52,14 +52,12 @@ const RULE_DARK = "#2A3B52";
 const M = 40; // page margin
 const SB_W = 52; // sidebar width
 const SB_GAP = 20; // gap between sidebar and content
-const HERO_H = 107; // hero height at content width (ratio ~4.82)
+const HERO_H = 124; // hero height at content width (ratio ~4.17, trimmed)
 const SB_TOP = 30 + HERO_H + 24; // below hero
 const SB_BOTTOM = 46; // gap above footer
 const SB_H = 842 - SB_TOP - SB_BOTTOM;
 
 const serif = "Times-Roman";
-const serifB = "Times-Bold";
-const serifI = "Times-Italic";
 
 const styles = StyleSheet.create({
   page: {
@@ -177,9 +175,9 @@ const styles = StyleSheet.create({
   totLabel: { fontFamily: "Helvetica", fontSize: 8.5, letterSpacing: 1.2, color: MUTED },
   totValue: { fontFamily: serif, fontSize: 12, color: INK },
   grandLabel: { fontFamily: "Helvetica", fontSize: 8, letterSpacing: 1.5, color: MUTED },
+  grandRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
   grandNumber: { fontFamily: serif, fontSize: 34, color: INK, lineHeight: 1 },
-  grandCurrency: { fontFamily: "Helvetica", fontSize: 9, color: MUTED, textAlign: "right", marginTop: 2 },
-  signature: { fontFamily: serifI, fontSize: 14, color: "#9A968E", marginTop: 5 },
+  grandCurrency: { fontFamily: "Helvetica", fontSize: 9, color: MUTED, marginBottom: 5 },
 
   footer: {
     position: "absolute",
@@ -317,27 +315,33 @@ function POPdf({ data }: { data: PODocData }) {
             </View>
 
             <View style={styles.bottomRight}>
-              <View style={{ borderTopWidth: 0.7, borderTopColor: RULE }} />
-              <View style={styles.totRow}>
-                <Text style={styles.totLabel}>SUBTOTAL</Text>
-                <Text style={styles.totValue}>{money(subtotal)}</Text>
-              </View>
               {data.taxRate ? (
-                <View style={[styles.totRow, { paddingTop: 0 }]}>
-                  <Text style={styles.totLabel}>TAX ({qtyFmt(data.taxRate)}%)</Text>
-                  <Text style={styles.totValue}>{money(taxTotal)}</Text>
-                </View>
+                <>
+                  <View style={{ borderTopWidth: 0.7, borderTopColor: RULE }} />
+                  <View style={styles.totRow}>
+                    <Text style={styles.totLabel}>SUBTOTAL</Text>
+                    <Text style={styles.totValue}>{money(subtotal)}</Text>
+                  </View>
+                  <View style={[styles.totRow, { paddingTop: 0 }]}>
+                    <Text style={styles.totLabel}>TAX ({qtyFmt(data.taxRate)}%)</Text>
+                    <Text style={styles.totValue}>{money(taxTotal)}</Text>
+                  </View>
+                </>
               ) : null}
 
-              <View style={{ borderTopWidth: 0.7, borderTopColor: RULE, marginTop: 6, paddingTop: 12 }}>
+              <View
+                style={{
+                  borderTopWidth: 0.7,
+                  borderTopColor: RULE,
+                  marginTop: data.taxRate ? 6 : 0,
+                  paddingTop: 12,
+                }}
+              >
                 <Text style={styles.grandLabel}>TOTAL ORDER VALUE</Text>
-                <Text style={styles.grandNumber}>{money(data.grandTotal)}</Text>
-                <Text style={styles.grandCurrency}>{data.currency}</Text>
-              </View>
-
-              <View style={{ marginTop: 22 }}>
-                <Text style={styles.label}>SUPPLIER CONFIRMATION</Text>
-                <Text style={styles.signature}>Signature &amp; stamp</Text>
+                <View style={styles.grandRow}>
+                  <Text style={styles.grandNumber}>{money(data.grandTotal)}</Text>
+                  <Text style={styles.grandCurrency}>{data.currency}</Text>
+                </View>
               </View>
             </View>
           </View>
