@@ -52,11 +52,10 @@ const RULE_DARK = "#2A3B52";
 const M = 40; // page margin
 const SB_W = 52; // sidebar width
 const SB_GAP = 20; // gap between sidebar and content
-const HERO_H = 124; // hero height at content width (ratio ~4.17, trimmed)
-const SB_TOP = 30 + HERO_H + 24; // below hero
-const SB_BOTTOM = 46; // gap above footer
-const SB_H = 842 - SB_TOP - SB_BOTTOM;
-const HEADER_H = 366; // height of the repeating fixed header (tuned to fit)
+const CONTENT_LEFT = M + SB_W + SB_GAP; // left edge of the content column (112)
+const PAGE_H = 842; // A4 height in pt
+const HERO_H = 106; // fits the content-column width so its edges align with the text below
+const HEADER_H = 346; // height of the repeating fixed header (tuned to fit)
 
 // One font family throughout (same as the "SUPPLIER" label). Bold is used only
 // for emphasis — same family, same size.
@@ -85,17 +84,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: M,
     backgroundColor: CREAM,
   },
-  headerBody: { marginLeft: SB_W + SB_GAP, marginTop: 24 },
+  headerBody: { marginLeft: SB_W + SB_GAP },
   contentFlow: { marginLeft: SB_W + SB_GAP },
-  hero: { width: "100%", height: HERO_H, borderRadius: 6, objectFit: "contain" },
+  hero: { width: "100%", height: HERO_H, objectFit: "contain", marginBottom: 20 },
 
-  // Sidebar
+  // Sidebar — full page height (top to bottom)
   sidebar: {
     position: "absolute",
     left: M,
-    top: SB_TOP,
+    top: 0,
+    height: PAGE_H,
     width: SB_W,
-    height: SB_H,
     backgroundColor: NAVY,
   },
   sidebarAccent: {
@@ -108,9 +107,9 @@ const styles = StyleSheet.create({
   },
   sidebarTitle: {
     position: "absolute",
-    width: SB_H,
-    top: (SB_H - 34) / 2,
-    left: (SB_W - SB_H) / 2,
+    width: PAGE_H,
+    top: (PAGE_H - 34) / 2,
+    left: (SB_W - PAGE_H) / 2,
     transform: "rotate(-90deg)",
     textAlign: "center",
     color: "#FFFFFF",
@@ -121,7 +120,7 @@ const styles = StyleSheet.create({
   sidebarRef: {
     position: "absolute",
     width: 150,
-    top: SB_H - 88,
+    top: PAGE_H - 118,
     left: (SB_W - 150) / 2,
     transform: "rotate(-90deg)",
     textAlign: "center",
@@ -198,7 +197,7 @@ const styles = StyleSheet.create({
   footer: {
     position: "absolute",
     bottom: 20,
-    left: M,
+    left: CONTENT_LEFT,
     right: M,
     borderTopWidth: 0.7,
     borderTopColor: RULE,
@@ -247,15 +246,15 @@ function POPdf({ data }: { data: PODocData }) {
       <Page size="A4" style={styles.page}>
         {/* Fixed header — repeats on every page */}
         <View style={styles.headerFixed} fixed>
-          {heroDataUri ? (
-            <Image src={heroDataUri} style={styles.hero} />
-          ) : (
-            <Text style={{ textAlign: "center", fontSize: 18 }}>
-              {COMPANY.name}
-            </Text>
-          )}
-
           <View style={styles.headerBody}>
+            {heroDataUri ? (
+              <Image src={heroDataUri} style={styles.hero} />
+            ) : (
+              <Text style={{ textAlign: "center", fontSize: 18 }}>
+                {COMPANY.name}
+              </Text>
+            )}
+
             <View style={styles.refRow}>
               <View>
                 <Text style={styles.label}>OUR REFERENCE</Text>
