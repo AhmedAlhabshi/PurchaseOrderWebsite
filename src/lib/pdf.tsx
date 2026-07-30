@@ -57,7 +57,12 @@ const SB_TOP = 30 + HERO_H + 24; // below hero
 const SB_BOTTOM = 46; // gap above footer
 const SB_H = 842 - SB_TOP - SB_BOTTOM;
 
-const serif = "Times-Roman";
+// One font family throughout (same as the "SUPPLIER" label). Bold is used only
+// for emphasis — same family, same size.
+const SANS = "Helvetica";
+const BOLD = "Helvetica-Bold";
+const BODY = 10; // uniform content size
+const LABEL = 8; // uniform label size
 
 const styles = StyleSheet.create({
   page: {
@@ -95,8 +100,9 @@ const styles = StyleSheet.create({
     transform: "rotate(-90deg)",
     textAlign: "center",
     color: "#FFFFFF",
-    fontFamily: serif,
-    fontSize: 26,
+    fontFamily: SANS,
+    fontSize: 22,
+    letterSpacing: 1,
   },
   sidebarRef: {
     position: "absolute",
@@ -114,10 +120,10 @@ const styles = StyleSheet.create({
   content: { marginLeft: SB_W + SB_GAP, marginTop: 24 },
 
   label: {
-    fontSize: 7.5,
-    letterSpacing: 1.6,
+    fontSize: LABEL,
+    letterSpacing: 1.4,
     color: MUTED,
-    fontFamily: "Helvetica",
+    fontFamily: SANS,
   },
 
   refRow: {
@@ -125,15 +131,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
-  refNumber: { fontFamily: serif, fontSize: 25, color: INK, marginTop: 4, letterSpacing: 1 },
-  dateValue: { fontFamily: serif, fontSize: 17, color: INK, marginTop: 4 },
+  refNumber: { fontFamily: BOLD, fontSize: BODY, color: INK, marginTop: 5, letterSpacing: 0.3 },
+  dateValue: { fontFamily: SANS, fontSize: BODY, color: INK, marginTop: 5 },
 
   ruleThin: { borderTopWidth: 0.7, borderTopColor: RULE, marginVertical: 18 },
   ruleThick: { borderTopWidth: 1.4, borderTopColor: RULE_DARK, marginVertical: 18 },
 
   metaRow: { flexDirection: "row", marginBottom: 2 },
   metaCol: { flex: 1, paddingRight: 10 },
-  metaValue: { fontFamily: serif, fontSize: 13, color: INK, marginTop: 4 },
+  metaValue: { fontFamily: SANS, fontSize: BODY, color: INK, marginTop: 5 },
 
   // Table
   tHead: { flexDirection: "row", marginBottom: 4 },
@@ -151,20 +157,18 @@ const styles = StyleSheet.create({
   cUnit: { width: "13%", textAlign: "right" },
   cAmt: { width: "16%", textAlign: "right" },
 
-  no: { fontFamily: "Helvetica", fontSize: 8.5, color: MUTED, letterSpacing: 0.5 },
-  code: { fontFamily: "Helvetica", fontSize: 9, color: INK },
-  desc: { fontFamily: "Helvetica", fontSize: 9, color: INK },
-  qty: { fontFamily: "Helvetica", fontSize: 9.5, color: INK },
-  unit: { fontFamily: "Helvetica", fontSize: 9.5, color: UNITBLUE },
-  amt: { fontFamily: serif, fontSize: 13, color: INK },
+  no: { fontFamily: SANS, fontSize: BODY, color: MUTED, letterSpacing: 0.5 },
+  code: { fontFamily: SANS, fontSize: BODY, color: INK },
+  desc: { fontFamily: SANS, fontSize: BODY, color: INK },
+  qty: { fontFamily: SANS, fontSize: BODY, color: INK },
+  unit: { fontFamily: SANS, fontSize: BODY, color: UNITBLUE },
+  amt: { fontFamily: BOLD, fontSize: BODY, color: INK },
 
   // Bottom
   bottom: { flexDirection: "row", marginTop: 22 },
   bottomLeft: { flex: 1.15, paddingRight: 24 },
   bottomRight: { flex: 1 },
-  noteText: { fontFamily: "Helvetica", fontSize: 8.5, color: "#555", lineHeight: 1.5, marginTop: 6 },
-  preparedName: { fontFamily: serif, fontSize: 14, color: INK, marginTop: 5 },
-  preparedContact: { fontFamily: "Helvetica", fontSize: 8, color: MUTED, marginTop: 3 },
+  noteText: { fontFamily: SANS, fontSize: BODY, color: "#555", lineHeight: 1.5, marginTop: 6 },
 
   totRow: {
     flexDirection: "row",
@@ -172,12 +176,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 6,
   },
-  totLabel: { fontFamily: "Helvetica", fontSize: 8.5, letterSpacing: 1.2, color: MUTED },
-  totValue: { fontFamily: serif, fontSize: 12, color: INK },
-  grandLabel: { fontFamily: "Helvetica", fontSize: 8, letterSpacing: 1.5, color: MUTED },
-  grandRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
-  grandNumber: { fontFamily: serif, fontSize: 34, color: INK, lineHeight: 1 },
-  grandCurrency: { fontFamily: "Helvetica", fontSize: 9, color: MUTED, marginBottom: 5 },
+  totLabel: { fontFamily: SANS, fontSize: LABEL, letterSpacing: 1.2, color: MUTED },
+  totValue: { fontFamily: BOLD, fontSize: BODY, color: INK },
+  grandLabel: { fontFamily: SANS, fontSize: LABEL, letterSpacing: 1.4, color: MUTED },
+  grandRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 3 },
+  grandNumber: { fontFamily: BOLD, fontSize: BODY, color: INK },
+  grandCurrency: { fontFamily: SANS, fontSize: LABEL, color: MUTED },
 
   footer: {
     position: "absolute",
@@ -190,7 +194,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  footText: { fontFamily: "Helvetica", fontSize: 7.5, letterSpacing: 0.8, color: MUTED },
+  footText: { fontFamily: SANS, fontSize: LABEL, letterSpacing: 0.8, color: MUTED },
+  footPrepared: { fontFamily: SANS, fontSize: LABEL, letterSpacing: 0.8, color: MUTED, marginTop: 3 },
 });
 
 function money(n: number) {
@@ -300,18 +305,6 @@ function POPdf({ data }: { data: PODocData }) {
             <View style={styles.bottomLeft}>
               <Text style={styles.label}>NOTES</Text>
               <Text style={styles.noteText}>{PO_NOTES}</Text>
-
-              <View style={{ marginTop: 20 }}>
-                <Text style={styles.label}>PREPARED BY</Text>
-                <Text style={styles.preparedName}>{data.preparedBy}</Text>
-                {data.preparedByPhone || data.preparedByEmail ? (
-                  <Text style={styles.preparedContact}>
-                    {[data.preparedByPhone, data.preparedByEmail]
-                      .filter(Boolean)
-                      .join("  ·  ")}
-                  </Text>
-                ) : null}
-              </View>
             </View>
 
             <View style={styles.bottomRight}>
@@ -349,9 +342,16 @@ function POPdf({ data }: { data: PODocData }) {
 
         {/* Footer */}
         <View style={styles.footer} fixed>
-          <Text style={styles.footText}>
-            {COMPANY.name.toUpperCase()}      {COMPANY.website}  ·  {COMPANY.email}
-          </Text>
+          <View>
+            <Text style={styles.footText}>
+              {COMPANY.name.toUpperCase()}      {COMPANY.website}  ·  {COMPANY.email}
+            </Text>
+            <Text style={styles.footPrepared}>
+              PREPARED BY   {data.preparedBy}
+              {data.preparedByPhone ? `   ${data.preparedByPhone}` : ""}
+              {data.preparedByEmail ? `   ·   ${data.preparedByEmail}` : ""}
+            </Text>
+          </View>
           <Text
             style={styles.footText}
             render={({ pageNumber, totalPages }) =>
