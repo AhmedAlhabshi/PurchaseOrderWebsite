@@ -56,6 +56,7 @@ const HERO_H = 124; // hero height at content width (ratio ~4.17, trimmed)
 const SB_TOP = 30 + HERO_H + 24; // below hero
 const SB_BOTTOM = 46; // gap above footer
 const SB_H = 842 - SB_TOP - SB_BOTTOM;
+const HEADER_H = 366; // height of the repeating fixed header (tuned to fit)
 
 // One font family throughout (same as the "SUPPLIER" label). Bold is used only
 // for emphasis — same family, same size.
@@ -67,12 +68,25 @@ const LABEL = 8; // uniform label size
 const styles = StyleSheet.create({
   page: {
     backgroundColor: CREAM,
-    paddingTop: 30,
+    paddingTop: HEADER_H, // reserve space for the fixed header on every page
     paddingHorizontal: M,
     paddingBottom: 40,
     fontFamily: "Helvetica",
     color: INK,
   },
+  // Fixed header (hero + reference + meta + blue rule + table head) — repeats
+  // on every page. Absolute so it sits inside the reserved top padding.
+  headerFixed: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 30,
+    paddingHorizontal: M,
+    backgroundColor: CREAM,
+  },
+  headerBody: { marginLeft: SB_W + SB_GAP, marginTop: 24 },
+  contentFlow: { marginLeft: SB_W + SB_GAP },
   hero: { width: "100%", height: HERO_H, borderRadius: 6, objectFit: "contain" },
 
   // Sidebar
@@ -116,8 +130,6 @@ const styles = StyleSheet.create({
     fontSize: 7,
     letterSpacing: 1,
   },
-
-  content: { marginLeft: SB_W + SB_GAP, marginTop: 24 },
 
   label: {
     fontSize: LABEL,
@@ -233,57 +245,63 @@ function POPdf({ data }: { data: PODocData }) {
   return (
     <Document title={`Purchase Order ${data.poNumber}`} author={COMPANY.name}>
       <Page size="A4" style={styles.page}>
-        {/* Hero */}
-        {heroDataUri ? (
-          <Image src={heroDataUri} style={styles.hero} />
-        ) : (
-          <Text style={{ textAlign: "center", fontSize: 18 }}>{COMPANY.name}</Text>
-        )}
+        {/* Fixed header — repeats on every page */}
+        <View style={styles.headerFixed} fixed>
+          {heroDataUri ? (
+            <Image src={heroDataUri} style={styles.hero} />
+          ) : (
+            <Text style={{ textAlign: "center", fontSize: 18 }}>
+              {COMPANY.name}
+            </Text>
+          )}
 
-        {/* Vertical sidebar */}
-        <View style={styles.sidebar}>
+          <View style={styles.headerBody}>
+            <View style={styles.refRow}>
+              <View>
+                <Text style={styles.label}>OUR REFERENCE</Text>
+                <Text style={styles.refNumber}>{ref}</Text>
+              </View>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={styles.label}>DATE ISSUED</Text>
+                <Text style={styles.dateValue}>{dateFmt(data.poDate)}</Text>
+              </View>
+            </View>
+
+            <View style={styles.ruleThin} />
+
+            <View style={styles.metaRow}>
+              <Field label="SUPPLIER" value={data.supplierName} />
+              <Field label="ATTENTION" value={data.attention || ""} />
+              <Field label="CURRENCY" value={data.currency} />
+            </View>
+            <View style={[styles.metaRow, { marginTop: 16 }]}>
+              <Field label="DELIVERY" value={data.deliveryMethod} />
+              <Field label="PAYMENT TERMS" value={data.paymentTerms || ""} />
+              <View style={styles.metaCol} />
+            </View>
+
+            <View style={styles.ruleThick} />
+
+            <View style={styles.tHead}>
+              <Text style={[styles.cNo, styles.label]}>NO.</Text>
+              <Text style={[styles.cCode, styles.label]}>ITEM CODE</Text>
+              <Text style={[styles.cDesc, styles.label]}>DESCRIPTION</Text>
+              <Text style={[styles.cQty, styles.label]}>QTY</Text>
+              <Text style={[styles.cUnit, styles.label]}>UNIT</Text>
+              <Text style={[styles.cAmt, styles.label]}>AMOUNT</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Vertical sidebar — repeats on every page */}
+        <View style={styles.sidebar} fixed>
           <View style={styles.sidebarAccent} />
           <Text style={styles.sidebarTitle}>Purchase Order</Text>
           <Text style={styles.sidebarRef}>{data.poNumber}</Text>
         </View>
 
-        {/* Main content */}
-        <View style={styles.content}>
-          <View style={styles.refRow}>
-            <View>
-              <Text style={styles.label}>OUR REFERENCE</Text>
-              <Text style={styles.refNumber}>{ref}</Text>
-            </View>
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={styles.label}>DATE ISSUED</Text>
-              <Text style={styles.dateValue}>{dateFmt(data.poDate)}</Text>
-            </View>
-          </View>
-
-          <View style={styles.ruleThin} />
-
-          <View style={styles.metaRow}>
-            <Field label="SUPPLIER" value={data.supplierName} />
-            <Field label="ATTENTION" value={data.attention || ""} />
-            <Field label="CURRENCY" value={data.currency} />
-          </View>
-          <View style={[styles.metaRow, { marginTop: 16 }]}>
-            <Field label="DELIVERY" value={data.deliveryMethod} />
-            <Field label="PAYMENT TERMS" value={data.paymentTerms || ""} />
-            <View style={styles.metaCol} />
-          </View>
-
-          <View style={styles.ruleThick} />
-
-          {/* Items */}
-          <View style={styles.tHead}>
-            <Text style={[styles.cNo, styles.label]}>NO.</Text>
-            <Text style={[styles.cCode, styles.label]}>ITEM CODE</Text>
-            <Text style={[styles.cDesc, styles.label]}>DESCRIPTION</Text>
-            <Text style={[styles.cQty, styles.label]}>QTY</Text>
-            <Text style={[styles.cUnit, styles.label]}>UNIT</Text>
-            <Text style={[styles.cAmt, styles.label]}>AMOUNT</Text>
-          </View>
+        {/* Flowing content: items + totals */}
+        <View style={styles.contentFlow}>
           {data.items.map((it, i) => (
             <View key={i} style={styles.tRow} wrap={false}>
               <Text style={[styles.cNo, styles.no]}>
