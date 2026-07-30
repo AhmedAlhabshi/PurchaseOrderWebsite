@@ -195,7 +195,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   footText: { fontFamily: SANS, fontSize: LABEL, letterSpacing: 0.8, color: MUTED },
-  footPrepared: { fontFamily: SANS, fontSize: LABEL, letterSpacing: 0.8, color: MUTED, marginTop: 3 },
 });
 
 function money(n: number) {
@@ -342,16 +341,11 @@ function POPdf({ data }: { data: PODocData }) {
 
         {/* Footer */}
         <View style={styles.footer} fixed>
-          <View>
-            <Text style={styles.footText}>
-              {COMPANY.name.toUpperCase()}      {COMPANY.website}  ·  {COMPANY.email}
-            </Text>
-            <Text style={styles.footPrepared}>
-              PREPARED BY   {data.preparedBy}
-              {data.preparedByPhone ? `   ${data.preparedByPhone}` : ""}
-              {data.preparedByEmail ? `   ·   ${data.preparedByEmail}` : ""}
-            </Text>
-          </View>
+          <Text style={styles.footText}>
+            PREPARED BY   {data.preparedBy}
+            {data.preparedByPhone ? `   ${data.preparedByPhone}` : ""}
+            {data.preparedByEmail ? `   ·   ${data.preparedByEmail}` : ""}
+          </Text>
           <Text
             style={styles.footText}
             render={({ pageNumber, totalPages }) =>
