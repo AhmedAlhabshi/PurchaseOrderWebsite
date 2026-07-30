@@ -140,9 +140,9 @@ const styles = StyleSheet.create({
   cPrice: { width: "14%", textAlign: "right" },
   cTotal: { width: "14%", textAlign: "right" },
 
-  // Bottom: totals + prepared by
-  bottomRow: { flexDirection: "row", gap: 12 },
-  totalsBox: { width: "48%" },
+  // Bottom: totals (right) then prepared by (below)
+  totalsWrap: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 12 },
+  totalsBox: { width: "42%" },
   totRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   grandText: { color: "#ffffff", fontFamily: "Helvetica-Bold", fontSize: 11 },
 
   prepBox: {
-    flex: 1,
+    width: "55%",
     borderWidth: 1,
     borderColor: BORDER,
     borderRadius: 6,
@@ -301,8 +301,8 @@ function POPdf({ data }: { data: PODocData }) {
             ))}
           </View>
 
-          {/* Totals + Prepared By */}
-          <View style={styles.bottomRow}>
+          {/* Totals — right-aligned under the price columns */}
+          <View style={styles.totalsWrap}>
             <View style={styles.totalsBox}>
               <View style={[styles.totRow, styles.totRowFirst]}>
                 <Text style={styles.totLabel}>Subtotal</Text>
@@ -325,20 +325,21 @@ function POPdf({ data }: { data: PODocData }) {
                 </Text>
               </View>
             </View>
+          </View>
 
-            <View style={styles.prepBox}>
-              <View style={styles.cardHead}>
-                <Text style={styles.cardHeadText}>Prepared By</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <KV label="Name" value={data.preparedBy} />
-                {data.preparedByPhone ? (
-                  <KV label="Phone" value={data.preparedByPhone} />
-                ) : null}
-                {data.preparedByEmail ? (
-                  <KV label="Email" value={data.preparedByEmail} />
-                ) : null}
-              </View>
+          {/* Prepared By — below the totals */}
+          <View style={styles.prepBox}>
+            <View style={styles.cardHead}>
+              <Text style={styles.cardHeadText}>Prepared By</Text>
+            </View>
+            <View style={styles.cardBody}>
+              <KV label="Name" value={data.preparedBy} />
+              {data.preparedByPhone ? (
+                <KV label="Phone" value={data.preparedByPhone} />
+              ) : null}
+              {data.preparedByEmail ? (
+                <KV label="Email" value={data.preparedByEmail} />
+              ) : null}
             </View>
           </View>
 
