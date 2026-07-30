@@ -61,47 +61,35 @@ const styles = StyleSheet.create({
   hero: { width: "100%" },
   body: { paddingHorizontal: 34, paddingTop: 10 },
 
-  // Title row
-  titleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    marginBottom: 14,
-  },
-  title: { fontSize: 20, fontFamily: "Helvetica-Bold", color: NAVY, letterSpacing: 1 },
-  poBadge: { alignItems: "flex-end" },
-  poBadgePill: {
-    backgroundColor: NAVY,
-    color: "#ffffff",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 8,
-    paddingVertical: 2,
-    paddingHorizontal: 10,
-    borderRadius: 3,
-  },
-  poBadgeValue: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 11,
-    color: TITLE,
-    marginTop: 3,
-  },
-  poBadgeLabel: { fontSize: 7, color: GRAY, marginTop: 4 },
-  poBadgeDate: { fontFamily: "Helvetica-Bold", fontSize: 10, color: TITLE, marginTop: 1 },
-
-  // Info cards
-  cardsRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
-  card: {
-    flex: 1,
+  // Top row: supplier card + PO identity
+  topRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  supplierCard: {
+    flex: 1.9,
     borderWidth: 1,
     borderColor: BORDER,
     borderRadius: 6,
     overflow: "hidden",
   },
+  poCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: NAVY,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  poNumLabel: { backgroundColor: NAVY, paddingVertical: 5, paddingHorizontal: 10 },
+  poNumLabelText: {
+    color: "#ffffff",
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+    letterSpacing: 1,
+  },
+  poCardBody: { padding: 10 },
+  poNumValue: { fontFamily: "Helvetica-Bold", fontSize: 14, color: NAVY },
+  poDateLabel: { fontSize: 7, color: GRAY, marginTop: 8 },
+  poDateValue: { fontFamily: "Helvetica-Bold", fontSize: 11, color: TITLE, marginTop: 1 },
+
+  // Info cards
   cardHead: {
     backgroundColor: NAVY,
     paddingVertical: 5,
@@ -239,36 +227,9 @@ function POPdf({ data }: { data: PODocData }) {
         )}
 
         <View style={styles.body}>
-          {/* Title + PO badge */}
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>PURCHASE ORDER</Text>
-            <View style={styles.poBadge}>
-              <Text style={styles.poBadgePill}>PO Number</Text>
-              <Text style={styles.poBadgeValue}>
-                {data.poNumber}
-                {data.revision && data.revision > 0 ? ` (rev${data.revision})` : ""}
-              </Text>
-              <Text style={styles.poBadgeLabel}>Date</Text>
-              <Text style={styles.poBadgeDate}>{formatDate(data.poDate)}</Text>
-            </View>
-          </View>
-
-          {/* Company + Supplier cards */}
-          <View style={styles.cardsRow}>
-            <View style={styles.card}>
-              <View style={styles.cardHead}>
-                <Text style={styles.cardHeadText}>Company Information</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <KV label="Company Name" value={COMPANY.name} />
-                <KV label="Email" value={COMPANY.email} />
-                <KV label="Website" value={COMPANY.website} />
-                <KV label="Phone" value={COMPANY.phone} />
-                <KV label="VAT / Tax ID" value={COMPANY.vat} />
-              </View>
-            </View>
-
-            <View style={styles.card}>
+          {/* Supplier info + PO identity */}
+          <View style={styles.topRow}>
+            <View style={styles.supplierCard}>
               <View style={styles.cardHead}>
                 <Text style={styles.cardHeadText}>Supplier Information</Text>
               </View>
@@ -277,6 +238,20 @@ function POPdf({ data }: { data: PODocData }) {
                 <KV label="Contact Person" value={data.attention || ""} />
                 <KV label="Email" value={data.mainEmail} />
                 {cc.length > 0 && <KV label="CC" value={cc.join(", ")} />}
+              </View>
+            </View>
+
+            <View style={styles.poCard}>
+              <View style={styles.poNumLabel}>
+                <Text style={styles.poNumLabelText}>PO NUMBER</Text>
+              </View>
+              <View style={styles.poCardBody}>
+                <Text style={styles.poNumValue}>
+                  {data.poNumber}
+                  {data.revision && data.revision > 0 ? ` (rev${data.revision})` : ""}
+                </Text>
+                <Text style={styles.poDateLabel}>Date</Text>
+                <Text style={styles.poDateValue}>{formatDate(data.poDate)}</Text>
               </View>
             </View>
           </View>
@@ -291,13 +266,9 @@ function POPdf({ data }: { data: PODocData }) {
               <Text style={styles.metaLabel}>Payment Terms</Text>
               <Text style={styles.metaValue}>{data.paymentTerms || "—"}</Text>
             </View>
-            <View style={styles.metaCell}>
+            <View style={styles.metaCellLast}>
               <Text style={styles.metaLabel}>Shipping Method</Text>
               <Text style={styles.metaValue}>{data.deliveryMethod}</Text>
-            </View>
-            <View style={styles.metaCellLast}>
-              <Text style={styles.metaLabel}>Order Date</Text>
-              <Text style={styles.metaValue}>{formatDate(data.poDate)}</Text>
             </View>
           </View>
 
