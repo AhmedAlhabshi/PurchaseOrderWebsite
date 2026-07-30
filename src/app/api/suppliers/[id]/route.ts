@@ -18,8 +18,8 @@ const updateSchema = z.object({
     .string()
     .trim()
     .min(1, "Abbreviation is required")
-    .max(6, "Abbreviation is too long")
-    .transform((s) => s.toUpperCase().replace(/[^A-Z0-9]/g, "")),
+    .max(12, "Abbreviation is too long")
+    .transform((s) => s.replace(/[^A-Za-z0-9]/g, "")),
   currentNumber: z.coerce.number().int().min(0).default(0),
   emails: emailsSchema,
 });

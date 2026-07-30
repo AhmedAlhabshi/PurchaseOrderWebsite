@@ -107,11 +107,11 @@ export default function SuppliersManager({
           <div>
             <label className="field-label">Abbreviation</label>
             <input
-              className="input uppercase"
+              className="input"
               value={abbr}
-              onChange={(e) => setAbbr(e.target.value.toUpperCase())}
+              onChange={(e) => setAbbr(e.target.value)}
               placeholder="TYR"
-              maxLength={6}
+              maxLength={12}
             />
           </div>
           <div>
@@ -282,10 +282,10 @@ function EditRow({
       </td>
       <td className="px-4 py-2">
         <input
-          className="input uppercase w-24"
+          className="input w-24"
           value={abbr}
-          maxLength={6}
-          onChange={(e) => setAbbr(e.target.value.toUpperCase())}
+          maxLength={12}
+          onChange={(e) => setAbbr(e.target.value)}
         />
       </td>
       <td className="px-4 py-2">

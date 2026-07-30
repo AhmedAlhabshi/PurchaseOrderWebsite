@@ -26,6 +26,9 @@ export default function RootLayout({
               </span>
             </Link>
             <div className="flex items-center gap-2">
+              <Link href="/preparers" className="btn-secondary hidden sm:inline-flex">
+                Preparers
+              </Link>
               <Link href="/suppliers" className="btn-secondary">
                 Suppliers
               </Link>

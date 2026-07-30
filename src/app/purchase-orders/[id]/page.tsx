@@ -166,7 +166,12 @@ export default async function PODetailsPage({
               <Detail label="Payment Terms" value={po.paymentTerms || "—"} />
               <Detail label="PO Date" value={formatDate(po.poDate)} />
               <Detail label="Currency" value={po.currency} />
-              <Detail label="Prepared By" value={po.preparedBy} />
+              <Detail
+                label="Prepared By"
+                value={[po.preparedBy, po.preparedByPhone, po.preparedByEmail]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
               <Detail label="Revision" value={po.revision > 0 ? `rev${po.revision}` : "Original"} />
               <Detail
                 label="Email Sent"

@@ -46,6 +46,8 @@ export async function POST(
       paymentTerms: po.paymentTerms,
       currency: po.currency,
       preparedBy: po.preparedBy,
+      preparedByEmail: po.preparedByEmail,
+      preparedByPhone: po.preparedByPhone,
       items: po.items,
       taxRate: po.taxRate,
       grandTotal: po.grandTotal,

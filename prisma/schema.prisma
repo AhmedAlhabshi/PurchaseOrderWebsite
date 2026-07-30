@@ -14,6 +14,15 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Preparer {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  phone     String   @default("")
+  email     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Supplier {
   id           String @id @default(cuid())
   name         String @unique
@@ -49,7 +58,9 @@ model PurchaseOrder {
   deliveryMethod String
   paymentTerms   String?
   currency       String  @default("USD")
-  preparedBy     String
+  preparedBy     String // name
+  preparedByEmail String @default("")
+  preparedByPhone String @default("")
 
   // Revision (0 = original, 1 = rev1, ...)
   revision Int @default(0)

@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
     paymentTerms: data.paymentTerms,
     currency: data.currency,
     preparedBy: data.preparedBy,
+    preparedByEmail: data.preparedByEmail,
+    preparedByPhone: data.preparedByPhone,
     items: data.items,
     taxRate: data.taxRate,
     grandTotal,

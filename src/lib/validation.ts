@@ -29,6 +29,8 @@ export const poInputSchema = z.object({
   paymentTerms: z.string().trim().optional().default(""),
   currency: z.string().trim().min(1, "Currency is required"),
   preparedBy: z.string().trim().min(1, "Prepared by is required"),
+  preparedByEmail: z.string().trim().optional().default(""),
+  preparedByPhone: z.string().trim().optional().default(""),
   // One tax percentage for the whole order (optional).
   taxRate: z.coerce
     .number()

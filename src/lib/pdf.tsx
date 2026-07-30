@@ -11,12 +11,12 @@ import {
 import { formatAmount, formatNumber, formatDate } from "./format";
 import { computeSubtotal, computeTaxTotal } from "./validation";
 import { HERO_DATA_URI } from "./heroImage";
+import { COMPANY } from "./company";
 
-// The company hero (logos + name band + "Purchase Order" title) is reproduced
-// exactly from the customer's template as a single embedded image at the top.
+// The company hero (logos + name band + contact info) is reproduced exactly from
+// the customer's template as a single embedded image at the top.
 const heroDataUri = HERO_DATA_URI;
 
-// Shape of the data the PDF needs. Works both before saving (preview) and after.
 export type PODocData = {
   poNumber: string;
   revision?: number;
@@ -29,6 +29,8 @@ export type PODocData = {
   paymentTerms?: string | null;
   currency: string;
   preparedBy: string;
+  preparedByEmail?: string | null;
+  preparedByPhone?: string | null;
   taxRate?: number;
   items: {
     itemCode: string;
@@ -40,120 +42,178 @@ export type PODocData = {
 };
 
 const NAVY = "#0b4a8f";
-const LABEL_BG = "#dbeafe";
+const NAVY_DARK = "#0a3d75";
 const LABEL_TX = "#0b4a8f";
-const BORDER = "#c7d2e0";
-const ALT = "#f1f6fc";
-const GRAY = "#475569";
+const BORDER = "#d5deea";
+const ALT = "#f2f6fc";
+const GRAY = "#5b6b7f";
+const TITLE = "#0f2b4c";
 
 const styles = StyleSheet.create({
   page: {
     paddingTop: 0,
-    paddingBottom: 46,
+    paddingBottom: 40,
     paddingHorizontal: 0,
-    fontSize: 9.5,
-    color: "#0f172a",
+    fontSize: 9,
+    color: "#1f2937",
     fontFamily: "Helvetica",
   },
   hero: { width: "100%" },
-  body: { paddingHorizontal: 40, paddingTop: 6 },
+  body: { paddingHorizontal: 34, paddingTop: 10 },
 
-  metaWrap: { alignItems: "flex-end", marginBottom: 14 },
-  metaLine: { fontFamily: "Helvetica-Bold", fontSize: 10, marginTop: 2 },
-
-  // Supplier / order fields block (label column tinted, like the template).
-  fields: {
+  // Title row
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: BORDER,
-    borderRadius: 2,
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     marginBottom: 14,
   },
-  fRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: BORDER },
-  fRowLast: { flexDirection: "row" },
-  fLabel: {
-    width: 120,
-    backgroundColor: LABEL_BG,
-    color: LABEL_TX,
+  title: { fontSize: 20, fontFamily: "Helvetica-Bold", color: NAVY, letterSpacing: 1 },
+  poBadge: { alignItems: "flex-end" },
+  poBadgePill: {
+    backgroundColor: NAVY,
+    color: "#ffffff",
     fontFamily: "Helvetica-Bold",
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    fontSize: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 10,
+    borderRadius: 3,
   },
-  fValue: { flex: 1, paddingVertical: 5, paddingHorizontal: 8 },
+  poBadgeValue: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 11,
+    color: TITLE,
+    marginTop: 3,
+  },
+  poBadgeLabel: { fontSize: 7, color: GRAY, marginTop: 4 },
+  poBadgeDate: { fontFamily: "Helvetica-Bold", fontSize: 10, color: TITLE, marginTop: 1 },
 
-  intro: { marginBottom: 8, color: "#334155" },
+  // Info cards
+  cardsRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  card: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  cardHead: {
+    backgroundColor: NAVY,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  cardHeadText: { color: "#ffffff", fontFamily: "Helvetica-Bold", fontSize: 9 },
+  cardBody: { padding: 8 },
+  kv: { flexDirection: "row", marginBottom: 4 },
+  k: { width: 92, color: GRAY },
+  v: { flex: 1, color: "#111827", fontFamily: "Helvetica-Bold" },
 
-  table: { borderWidth: 1, borderColor: NAVY, borderRadius: 1 },
+  // Meta strip
+  metaStrip: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 6,
+    marginBottom: 12,
+  },
+  metaCell: {
+    flex: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRightWidth: 1,
+    borderRightColor: BORDER,
+  },
+  metaCellLast: { flex: 1, paddingVertical: 7, paddingHorizontal: 10 },
+  metaLabel: { fontSize: 7, color: GRAY, marginBottom: 2 },
+  metaValue: { fontFamily: "Helvetica-Bold", color: TITLE, fontSize: 9 },
+
+  // Items table
+  table: { borderWidth: 1, borderColor: NAVY, borderRadius: 3, marginBottom: 12 },
   th: { flexDirection: "row", backgroundColor: NAVY },
   thCell: {
     color: "#ffffff",
     fontFamily: "Helvetica-Bold",
     paddingVertical: 5,
     paddingHorizontal: 5,
-    fontSize: 9,
+    fontSize: 8.5,
   },
   tr: { flexDirection: "row", borderTopWidth: 1, borderTopColor: BORDER },
   trAlt: { backgroundColor: ALT },
-  cell: { paddingVertical: 4.5, paddingHorizontal: 5 },
-
+  cell: { paddingVertical: 5, paddingHorizontal: 5 },
   cNo: { width: "6%", textAlign: "center" },
+  cDesc: { width: "40%" },
   cCode: { width: "16%" },
-  cDesc: { width: "38%" },
   cQty: { width: "10%", textAlign: "right" },
-  cPrice: { width: "15%", textAlign: "right" },
-  cTotal: { width: "15%", textAlign: "right" },
+  cPrice: { width: "14%", textAlign: "right" },
+  cTotal: { width: "14%", textAlign: "right" },
 
-  // Totals block (right-aligned) under the items table.
-  totalsWrap: { flexDirection: "row", justifyContent: "flex-end" },
-  totalsBox: { width: "45%" },
+  // Bottom: totals + prepared by
+  bottomRow: { flexDirection: "row", gap: 12 },
+  totalsBox: { width: "48%" },
   totRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     borderWidth: 1,
     borderColor: BORDER,
     borderTopWidth: 0,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
   },
-  totRowFirst: { borderTopWidth: 1 },
+  totRowFirst: { borderTopWidth: 1, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   totLabel: { color: GRAY },
-  totVal: { fontFamily: "Helvetica-Bold" },
+  totVal: { fontFamily: "Helvetica-Bold", color: "#111827" },
   grandRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     backgroundColor: NAVY,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
   },
   grandText: { color: "#ffffff", fontFamily: "Helvetica-Bold", fontSize: 11 },
 
+  prepBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+
   footer: {
     position: "absolute",
-    bottom: 22,
-    left: 40,
-    right: 40,
+    bottom: 18,
+    left: 34,
+    right: 34,
     borderTopWidth: 1,
     borderTopColor: BORDER,
     paddingTop: 6,
     flexDirection: "row",
     justifyContent: "space-between",
-    fontSize: 9,
+    fontSize: 8,
+    color: GRAY,
   },
-  preparedBy: { fontFamily: "Helvetica-Bold" },
+  thanks: {
+    textAlign: "center",
+    color: NAVY,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+    marginTop: 14,
+    marginBottom: 4,
+  },
 });
 
-function Field({
-  label,
-  value,
-  last,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
+function KV({ label, value }: { label: string; value: string }) {
   return (
-    <View style={last ? styles.fRowLast : styles.fRow}>
-      <Text style={styles.fLabel}>{label}</Text>
-      <Text style={styles.fValue}>{value || "—"}</Text>
+    <View style={styles.kv}>
+      <Text style={styles.k}>{label}</Text>
+      <Text style={styles.v}>{value || "—"}</Text>
     </View>
   );
 }
@@ -167,65 +227,90 @@ function POPdf({ data }: { data: PODocData }) {
   return (
     <Document
       title={`Purchase Order ${data.poNumber}`}
-      author="Diamond Tools & Equipment Est."
+      author={COMPANY.name}
     >
       <Page size="LETTER" style={styles.page}>
         {heroDataUri ? (
           <Image src={heroDataUri} style={styles.hero} />
         ) : (
           <Text style={{ textAlign: "center", fontSize: 18, marginTop: 20 }}>
-            Purchase Order
+            {COMPANY.name}
           </Text>
         )}
 
         <View style={styles.body}>
-          {/* PO number + date, top-right like the template */}
-          <View style={styles.metaWrap}>
-            <Text style={styles.metaLine}>
-              {data.poNumber}
-              {data.revision && data.revision > 0 ? `  (rev${data.revision})` : ""}
-            </Text>
-            <Text style={styles.metaLine}>{formatDate(data.poDate)}</Text>
+          {/* Title + PO badge */}
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>PURCHASE ORDER</Text>
+            <View style={styles.poBadge}>
+              <Text style={styles.poBadgePill}>PO Number</Text>
+              <Text style={styles.poBadgeValue}>
+                {data.poNumber}
+                {data.revision && data.revision > 0 ? ` (rev${data.revision})` : ""}
+              </Text>
+              <Text style={styles.poBadgeLabel}>Date</Text>
+              <Text style={styles.poBadgeDate}>{formatDate(data.poDate)}</Text>
+            </View>
           </View>
 
-          {/* Fields */}
-          <View style={styles.fields}>
-            <Field label="Supplier" value={data.supplierName} />
-            <Field label="Attention" value={data.attention || ""} />
-            <Field
-              label="Subject"
-              value={
-                data.revision && data.revision > 0
-                  ? `REVISED (rev${data.revision}): ${data.poNumber}`
-                  : `NEW: ${data.poNumber}`
-              }
-            />
-            <Field label="Main Email" value={data.mainEmail} />
-            {cc.length > 0 && <Field label="CC" value={cc.join(", ")} />}
-            <Field label="Delivery" value={data.deliveryMethod} />
-            <Field
-              label="Payment Terms:"
-              value={data.paymentTerms || ""}
-              last
-            />
+          {/* Company + Supplier cards */}
+          <View style={styles.cardsRow}>
+            <View style={styles.card}>
+              <View style={styles.cardHead}>
+                <Text style={styles.cardHeadText}>Company Information</Text>
+              </View>
+              <View style={styles.cardBody}>
+                <KV label="Company Name" value={COMPANY.name} />
+                <KV label="Email" value={COMPANY.email} />
+                <KV label="Website" value={COMPANY.website} />
+                <KV label="Phone" value={COMPANY.phone} />
+                <KV label="VAT / Tax ID" value={COMPANY.vat} />
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardHead}>
+                <Text style={styles.cardHeadText}>Supplier Information</Text>
+              </View>
+              <View style={styles.cardBody}>
+                <KV label="Supplier Name" value={data.supplierName} />
+                <KV label="Contact Person" value={data.attention || ""} />
+                <KV label="Email" value={data.mainEmail} />
+                {cc.length > 0 && <KV label="CC" value={cc.join(", ")} />}
+              </View>
+            </View>
           </View>
 
-          <Text style={styles.intro}>
-            Please find below our purchase order details for your confirmation
-            and processing.
-          </Text>
+          {/* Meta strip */}
+          <View style={styles.metaStrip}>
+            <View style={styles.metaCell}>
+              <Text style={styles.metaLabel}>Currency</Text>
+              <Text style={styles.metaValue}>{data.currency}</Text>
+            </View>
+            <View style={styles.metaCell}>
+              <Text style={styles.metaLabel}>Payment Terms</Text>
+              <Text style={styles.metaValue}>{data.paymentTerms || "—"}</Text>
+            </View>
+            <View style={styles.metaCell}>
+              <Text style={styles.metaLabel}>Shipping Method</Text>
+              <Text style={styles.metaValue}>{data.deliveryMethod}</Text>
+            </View>
+            <View style={styles.metaCellLast}>
+              <Text style={styles.metaLabel}>Order Date</Text>
+              <Text style={styles.metaValue}>{formatDate(data.poDate)}</Text>
+            </View>
+          </View>
 
           {/* Items */}
           <View style={styles.table}>
             <View style={styles.th}>
               <Text style={[styles.thCell, styles.cNo]}>No.</Text>
-              <Text style={[styles.thCell, styles.cCode]}>Item Code</Text>
               <Text style={[styles.thCell, styles.cDesc]}>Item Description</Text>
+              <Text style={[styles.thCell, styles.cCode]}>Item Code</Text>
               <Text style={[styles.thCell, styles.cQty]}>Qty.</Text>
               <Text style={[styles.thCell, styles.cPrice]}>Unit Price</Text>
               <Text style={[styles.thCell, styles.cTotal]}>Line Total</Text>
             </View>
-
             {data.items.map((it, i) => (
               <View
                 key={i}
@@ -233,8 +318,8 @@ function POPdf({ data }: { data: PODocData }) {
                 wrap={false}
               >
                 <Text style={[styles.cell, styles.cNo]}>{i + 1}</Text>
-                <Text style={[styles.cell, styles.cCode]}>{it.itemCode}</Text>
                 <Text style={[styles.cell, styles.cDesc]}>{it.description}</Text>
+                <Text style={[styles.cell, styles.cCode]}>{it.itemCode}</Text>
                 <Text style={[styles.cell, styles.cQty]}>
                   {formatNumber(it.quantity)}
                 </Text>
@@ -248,8 +333,8 @@ function POPdf({ data }: { data: PODocData }) {
             ))}
           </View>
 
-          {/* Totals: Subtotal / Tax / Grand Total */}
-          <View style={styles.totalsWrap}>
+          {/* Totals + Prepared By */}
+          <View style={styles.bottomRow}>
             <View style={styles.totalsBox}>
               <View style={[styles.totRow, styles.totRowFirst]}>
                 <Text style={styles.totLabel}>Subtotal</Text>
@@ -266,18 +351,35 @@ function POPdf({ data }: { data: PODocData }) {
                 </Text>
               </View>
               <View style={styles.grandRow}>
-                <Text style={styles.grandText}>TOTAL</Text>
+                <Text style={styles.grandText}>Grand Total</Text>
                 <Text style={styles.grandText}>
                   {formatAmount(data.grandTotal, data.currency)}
                 </Text>
               </View>
             </View>
+
+            <View style={styles.prepBox}>
+              <View style={styles.cardHead}>
+                <Text style={styles.cardHeadText}>Prepared By</Text>
+              </View>
+              <View style={styles.cardBody}>
+                <KV label="Name" value={data.preparedBy} />
+                {data.preparedByPhone ? (
+                  <KV label="Phone" value={data.preparedByPhone} />
+                ) : null}
+                {data.preparedByEmail ? (
+                  <KV label="Email" value={data.preparedByEmail} />
+                ) : null}
+              </View>
+            </View>
           </View>
+
+          <Text style={styles.thanks}>Thank you for your cooperation</Text>
         </View>
 
         <View style={styles.footer} fixed>
-          <Text style={styles.preparedBy}>
-            Prepared By: {data.preparedBy}
+          <Text>
+            {COMPANY.phone}  ·  {COMPANY.email}
           </Text>
           <Text
             render={({ pageNumber, totalPages }) =>
