@@ -208,7 +208,6 @@ function KV({ label, value }: { label: string; value: string }) {
 
 function POPdf({ data }: { data: PODocData }) {
   const lineTotal = (q: number, p: number) => Math.round(q * p * 100) / 100;
-  const cc = data.ccEmails.filter(Boolean);
   const subtotal = computeSubtotal(data.items);
   const taxTotal = computeTaxTotal(data.items, data.taxRate);
 
@@ -236,8 +235,6 @@ function POPdf({ data }: { data: PODocData }) {
               <View style={styles.cardBody}>
                 <KV label="Supplier Name" value={data.supplierName} />
                 <KV label="Contact Person" value={data.attention || ""} />
-                <KV label="Email" value={data.mainEmail} />
-                {cc.length > 0 && <KV label="CC" value={cc.join(", ")} />}
               </View>
             </View>
 
