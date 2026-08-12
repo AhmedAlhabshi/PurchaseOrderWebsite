@@ -15,6 +15,7 @@ export type SendPOEmailArgs = {
   attention?: string | null;
   preparedBy: string;
   pdf: Buffer;
+  revision?: number;
 };
 
 function isConfigured(): boolean {
@@ -27,6 +28,35 @@ function isConfigured(): boolean {
 
 function buildBody(args: SendPOEmailArgs): { text: string; html: string } {
   const greeting = args.attention ? `Dear ${args.attention},` : "Dear Sir/Madam,";
+  if (args.revision && args.revision > 0) {
+    const revisedPo = `${args.poNumber} (rev${args.revision})`;
+    const previousPo =
+      args.revision === 1
+        ? args.poNumber
+        : `${args.poNumber} (rev${args.revision - 1})`;
+    const text = `${greeting}
+
+Please find attached our revised Purchase Order ${revisedPo}.
+Kindly confirm receipt and share your revised order confirmation at your earliest convenience.
+
+Note: Please cancel and disregard the previous Purchase Order ${previousPo} and proceed only with the attached revised version.
+
+Best regards,
+${args.preparedBy}
+Diamond Tools & Equipment Est.`;
+
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#0f172a;line-height:1.6">
+  <p>${greeting}</p>
+  <p>Please find attached our revised Purchase Order <strong>${revisedPo}</strong>.</p>
+  <p>Kindly confirm receipt and share your revised order confirmation at your earliest convenience.</p>
+  <p><strong>Note:</strong> Please cancel and disregard the previous Purchase Order <strong>${previousPo}</strong> and proceed only with the attached revised version.</p>
+  <p>Best regards,<br/>
+  ${args.preparedBy}<br/>
+  <span style="color:#1d4ed8;font-weight:bold">Diamond Tools &amp; Equipment Est.</span></p>
+</div>`;
+
+    return { text, html };
+  }
   const text = `${greeting}
 
 Please find attached our Purchase Order ${args.poNumber}.

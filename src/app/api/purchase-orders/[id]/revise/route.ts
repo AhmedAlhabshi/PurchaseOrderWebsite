@@ -110,6 +110,7 @@ export async function POST(
       attention: data.attention,
       preparedBy: data.preparedBy,
       pdf,
+      revision,
     });
     emailMode = result.mode;
     emailMessage = result.message;
