@@ -10,6 +10,8 @@ import { formatAmount } from "@/lib/format";
 import { normalizeDescription, DescriptionHistoryEntry } from "@/lib/descriptionHistory";
 import type { ItemCodeHistoryEntry } from "@/lib/itemCodeHistory";
 import ItemHistoryHint from "./ItemHistoryHint";
+import { previousPrice, PriceHistory } from "@/lib/previousPrice";
+import PreviousPriceHint from "./PreviousPriceHint";
 
 export type SupplierOption = {
   id: string;
@@ -85,6 +87,7 @@ export default function POForm({
   preparer,
   descriptionHistory,
   itemCodeHistory,
+  priceHistory,
   today,
   poId,
   initial,
@@ -94,6 +97,7 @@ export default function POForm({
   preparer: PreparerDetails;
   descriptionHistory: DescriptionHistoryEntry[];
   itemCodeHistory: ItemCodeHistoryEntry[];
+  priceHistory: PriceHistory;
   today: string;
   poId?: string;
   initial?: POFormInitial;
@@ -106,6 +110,12 @@ export default function POForm({
   const previousItemCodes = useMemo(() => new Map(
     itemCodeHistory.map(entry => [normalizeDescription(entry.itemCode), entry])
   ), [itemCodeHistory]);
+  const pricesByCode = useMemo(() => new Map(
+    priceHistory.byCode.map(entry => [normalizeDescription(entry.itemCode), entry])
+  ), [priceHistory]);
+  const pricesByDescription = useMemo(() => new Map(
+    priceHistory.byDescription.map(entry => [normalizeDescription(entry.description), entry])
+  ), [priceHistory]);
 
   const [suppliers, setSuppliers] = useState<SupplierOption[]>(initialSuppliers);
   const [supplierId, setSupplierId] = useState(initial?.supplierId || "");
@@ -840,6 +850,7 @@ export default function POForm({
                       onChange={(e) => updateItem(it.key, { unitPrice: e.target.value })}
                       placeholder="0.00"
                     />
+                    <PreviousPriceHint previous={previousPrice(it.itemCode, it.description, pricesByCode, pricesByDescription)} />
                   </td>
                   <td className="px-2 py-1.5 text-right font-medium text-slate-800">
                     {formatAmount(lineTotal(it.quantity, it.unitPrice), currency)}

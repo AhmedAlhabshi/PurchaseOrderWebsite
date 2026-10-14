@@ -72,6 +72,7 @@ export default async function EditPOPage({
       preparer={{ name: po.preparedBy, email: po.preparedByEmail, phone: po.preparedByPhone }}
       descriptionHistory={history.descriptionHistory}
       itemCodeHistory={history.itemCodeHistory}
+      priceHistory={history.priceHistory}
       today={today}
       poId={po.id}
       initial={initial}

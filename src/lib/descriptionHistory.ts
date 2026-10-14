@@ -10,7 +10,7 @@ export type DescriptionHistoryEntry = {
 };
 
 // Input is newest first so each normalized description keeps its latest PO.
-export function uniqueDescriptionHistory(entries: DescriptionHistoryEntry[]): DescriptionHistoryEntry[] {
+export function uniqueDescriptionHistory<T extends DescriptionHistoryEntry>(entries: T[]): T[] {
   const seen = new Set<string>();
   return entries.filter(entry => {
     const key = normalizeDescription(entry.description);

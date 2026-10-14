@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { uniqueDescriptionHistory } from "./descriptionHistory";
 import { uniqueItemCodeHistory } from "./itemCodeHistory";
+import { buildPriceHistory } from "./previousPrice";
 
 export async function loadItemHistory(excludePoId?: string) {
   const items = await prisma.pOItem.findMany({
@@ -11,12 +12,15 @@ export async function loadItemHistory(excludePoId?: string) {
     select: {
       description: true,
       itemCode: true,
-      po: { select: { id: true, poNumber: true, supplierName: true } },
+      unitPrice: true,
+      po: { select: { id: true, poNumber: true, supplierName: true, currency: true } },
     },
   });
   const entries = items.map(item => ({
     description: item.description,
     itemCode: item.itemCode,
+    unitPrice: item.unitPrice,
+    currency: item.po.currency,
     poId: item.po.id,
     poNumber: item.po.poNumber,
     supplierName: item.po.supplierName,
@@ -24,6 +28,7 @@ export async function loadItemHistory(excludePoId?: string) {
   return {
     descriptionHistory: uniqueDescriptionHistory(entries),
     itemCodeHistory: uniqueItemCodeHistory(entries),
+    priceHistory: buildPriceHistory(entries),
   };
 }
 

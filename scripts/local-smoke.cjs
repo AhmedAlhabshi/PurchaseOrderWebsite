@@ -94,6 +94,11 @@ async function main() {
   const previousItem = (await loadDescriptionHistory()).find(entry => entry.description === payload.items[0].description);
   assert.equal(previousItem.poId, orderId);
   assert.equal((await loadItemHistory()).itemCodeHistory.find(entry => entry.itemCode === "QA").poId, orderId);
+  const savedPrice = (await loadItemHistory()).priceHistory.byCode.find(entry => entry.itemCode === "QA");
+  assert.equal(savedPrice.unitPrice, 10);
+  assert.equal(savedPrice.currency, "USD");
+  assert.equal(savedPrice.poId, orderId);
+  assert.ok(!(await loadItemHistory(orderId)).priceHistory.byCode.some(entry => entry.poId === orderId));
   assert.ok(!(await loadItemHistory(orderId)).itemCodeHistory.some(entry => entry.poId === orderId), "An edited order must not match its own code");
   assert.ok(!(await loadDescriptionHistory(orderId)).some(entry => entry.poId === orderId), "An edited order must not match itself");
   const secondCookie = await signup("QA Colleague", `colleague-${suffix}@example.invalid`);

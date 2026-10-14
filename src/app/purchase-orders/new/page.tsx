@@ -47,6 +47,7 @@ export default async function NewPOPage() {
       preparer={user}
       descriptionHistory={history.descriptionHistory}
       itemCodeHistory={history.itemCodeHistory}
+      priceHistory={history.priceHistory}
       today={today}
     />
   );

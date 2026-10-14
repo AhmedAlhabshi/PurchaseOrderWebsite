@@ -7,7 +7,7 @@ export type ItemCodeHistoryEntry = {
   supplierName: string;
 };
 
-export function uniqueItemCodeHistory(entries: ItemCodeHistoryEntry[]): ItemCodeHistoryEntry[] {
+export function uniqueItemCodeHistory<T extends ItemCodeHistoryEntry>(entries: T[]): T[] {
   const seen = new Set<string>();
   return entries.filter(entry => {
     const key = normalizeDescription(entry.itemCode);

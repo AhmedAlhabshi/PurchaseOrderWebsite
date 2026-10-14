@@ -47,6 +47,9 @@ production. No production database changes are made by `dev:local`.
   with a link to the newest matching PO. Each field matches independently,
   ignoring case and extra whitespace. History searches all suppliers and excludes
   drafts and the order currently being edited.
+  Unit Price shows the latest recorded positive price with its original currency
+  and a link to the PO. It matches the item code first, or the description when
+  no code is entered. This reference does not change the entered price.
 - **Purchase Order Details** – full order data, PDF (view/download), editing with
   revisions, and per-item delivery tracking.
 - **Suppliers** – a small screen to manage suppliers (name + abbreviation +
