@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const orders = await prisma.purchaseOrder.findMany({
     orderBy: { updatedAt: "desc" },
-    include: { items: { select: { itemCode: true } } },
+    include: { items: { select: { itemCode: true, description: true } } },
   });
 
   const rows: PORow[] = orders.map((o) => ({
@@ -16,6 +16,7 @@ export default async function HomePage() {
     supplierName: o.supplierName,
     preparedBy: o.preparedBy,
     itemCodes: o.items.map((i) => i.itemCode),
+    itemDescriptions: o.items.map((i) => i.description),
     poDate: o.poDate.toISOString(),
     grandTotal: o.grandTotal,
     currency: o.currency,

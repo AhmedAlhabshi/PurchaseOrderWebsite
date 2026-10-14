@@ -13,6 +13,7 @@ export type PORow = {
   supplierName: string;
   preparedBy: string;
   itemCodes: string[];
+  itemDescriptions: string[];
   poDate: string;
   grandTotal: number;
   currency: string;
@@ -28,6 +29,7 @@ const SEARCH_FIELDS = [
   { key: "ponumber", label: "PO Number" },
   { key: "supplier", label: "Supplier" },
   { key: "itemcode", label: "Item Code" },
+  { key: "description", label: "Description" },
   { key: "preparedby", label: "Prepared By" },
   { key: "sent", label: "Sent Date" },
   { key: "arrival", label: "Arrival Date" },
@@ -43,6 +45,8 @@ function fieldHaystack(o: PORow, field: FieldKey): string {
       return o.supplierName;
     case "itemcode":
       return o.itemCodes.join(" ");
+    case "description":
+      return o.itemDescriptions.join(" ");
     case "preparedby":
       return o.preparedBy;
     case "sent":
@@ -56,6 +60,7 @@ function fieldHaystack(o: PORow, field: FieldKey): string {
         o.supplierName,
         o.preparedBy,
         o.itemCodes.join(" "),
+        o.itemDescriptions.join(" "),
         formatDate(o.poDate),
         formatDate(o.emailSentAt),
         formatDate(o.expectedShipping),
