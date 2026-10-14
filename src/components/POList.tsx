@@ -5,7 +5,7 @@ import Link from "next/link";
 import StatusBadge from "./StatusBadge";
 import { STATUS_ORDER, statusLabel } from "@/lib/status";
 import { formatAmount, formatDate, formatDateTime } from "@/lib/format";
-import { normalizeDescription } from "@/lib/descriptionHistory";
+import { matchesSearch } from "@/lib/search";
 
 export type PORow = {
   id: string;
@@ -77,9 +77,8 @@ export default function POList({ orders }: { orders: PORow[] }) {
   const [status, setStatus] = useState("ALL");
 
   const filtered = useMemo(() => {
-    const q = normalizeDescription(query);
     return orders.filter((o) => {
-      const matchesQuery = !q || normalizeDescription(fieldHaystack(o, field)).includes(q);
+      const matchesQuery = matchesSearch(fieldHaystack(o, field), query);
       const matchesStatus = status === "ALL" || o.status === status;
       return matchesQuery && matchesStatus;
     });
