@@ -7,6 +7,7 @@ import { defaultEmailBody } from "@/lib/emailBody";
 import { DELIVERY_METHODS, CURRENCIES, DEFAULT_CC_EMAILS } from "@/lib/options";
 import type { PreparerDetails } from "@/lib/preparedBy";
 import { formatAmount } from "@/lib/format";
+import { normalizeDescription, DescriptionHistoryEntry } from "@/lib/descriptionHistory";
 
 export type SupplierOption = {
   id: string;
@@ -80,6 +81,7 @@ export default function POForm({
   mode,
   suppliers: initialSuppliers,
   preparer,
+  descriptionHistory,
   today,
   poId,
   initial,
@@ -87,12 +89,16 @@ export default function POForm({
   mode: "create" | "edit";
   suppliers: SupplierOption[];
   preparer: PreparerDetails;
+  descriptionHistory: DescriptionHistoryEntry[];
   today: string;
   poId?: string;
   initial?: POFormInitial;
 }) {
   const router = useRouter();
   const isEdit = mode === "edit";
+  const previousDescriptions = useMemo(() => new Map(
+    descriptionHistory.map(entry => [normalizeDescription(entry.description), entry])
+  ), [descriptionHistory]);
 
   const [suppliers, setSuppliers] = useState<SupplierOption[]>(initialSuppliers);
   const [supplierId, setSupplierId] = useState(initial?.supplierId || "");
@@ -803,6 +809,23 @@ export default function POForm({
                       onChange={(e) => updateItem(it.key, { description: e.target.value })}
                       placeholder="Description"
                     />
+                    {normalizeDescription(it.description) && (() => {
+                      const previous = previousDescriptions.get(normalizeDescription(it.description));
+                      return previous ? (
+                        <p className="mt-1 text-xs text-green-700">
+                          ✓ Previously ordered —{" "}
+                          <Link
+                            href={`/purchase-orders/${previous.poId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold underline hover:text-green-900"
+                            title={`Last ordered from ${previous.supplierName}`}
+                          >
+                            {previous.poNumber}
+                          </Link>
+                        </p>
+                      ) : <p className="mt-1 text-xs text-slate-500">New — not previously ordered</p>;
+                    })()}
                   </td>
                   <td className="px-2 py-1.5">
                     <input

@@ -7,6 +7,7 @@ import POForm, {
 } from "@/components/POForm";
 import { parseCc } from "@/lib/serialize";
 import { toDateInputValue } from "@/lib/format";
+import { loadDescriptionHistory } from "@/lib/loadDescriptionHistory";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +17,13 @@ export default async function EditPOPage({
   params: { id: string };
 }) {
   await requireUser(`/purchase-orders/${params.id}/edit`);
-  const [po, suppliers] = await Promise.all([
+  const [po, suppliers, descriptionHistory] = await Promise.all([
     prisma.purchaseOrder.findUnique({
       where: { id: params.id },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
     prisma.supplier.findMany({ orderBy: { name: "asc" } }),
+    loadDescriptionHistory(params.id),
   ]);
 
   if (!po) notFound();
@@ -68,6 +70,7 @@ export default async function EditPOPage({
       mode="edit"
       suppliers={options}
       preparer={{ name: po.preparedBy, email: po.preparedByEmail, phone: po.preparedByPhone }}
+      descriptionHistory={descriptionHistory}
       today={today}
       poId={po.id}
       initial={initial}

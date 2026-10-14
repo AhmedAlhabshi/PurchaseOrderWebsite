@@ -40,6 +40,7 @@ function pdfText(bytes) {
   return text;
 }
 async function main() {
+  const { loadDescriptionHistory } = require("../src/lib/loadDescriptionHistory.ts");
   assert.equal((await call("/")).status, 200);
   for (const path of ["/suppliers", "/purchase-orders/new", "/account"]) {
     const r = await call(path); assert.equal(r.status, 307); assert.equal(r.headers.get("location"), `/login?next=${encodeURIComponent(path)}`);
@@ -60,7 +61,7 @@ async function main() {
   const supplierResponse = await call("/api/suppliers", { method: "POST", cookie, body: { name: `QA supplier ${suffix}`, abbreviation: "QA", currentNumber: 0, emails: [] } });
   assert.equal(supplierResponse.status, 200, await supplierResponse.clone().text());
   supplierId = (await supplierResponse.json()).supplier.id;
-  const payload = { supplierId, supplierName: "QA supplier", poNumber: "preview", poDate: "2026-10-14", mainEmail: "supplier@example.invalid", ccEmails: [], deliveryMethod: "DHL", currency: "USD", preparedBy: "FORGED NAME", preparedByEmail: "forged@example.invalid", preparedByPhone: "0000000", send: false, emailBody: "My custom message", items: [{ itemCode: "QA", description: "QA item", quantity: 2, unitPrice: 10 }] };
+  const payload = { supplierId, supplierName: "QA supplier", poNumber: "preview", poDate: "2026-10-14", mainEmail: "supplier@example.invalid", ccEmails: [], deliveryMethod: "DHL", currency: "USD", preparedBy: "FORGED NAME", preparedByEmail: "forged@example.invalid", preparedByPhone: "0000000", send: false, emailBody: "My custom message", items: [{ itemCode: "QA", description: `QA item ${suffix}`, quantity: 2, unitPrice: 10 }] };
   const preview = await call("/api/preview-pdf", { method: "POST", cookie, body: payload });
   assert.equal(preview.status, 200, await preview.clone().text());
   const text = pdfText(await preview.arrayBuffer());
@@ -68,6 +69,7 @@ async function main() {
   const created = await call("/api/purchase-orders", { method: "POST", cookie, body: payload });
   assert.equal(created.status, 200, await created.clone().text());
   orderId = (await created.json()).id;
+  assert.ok(!(await loadDescriptionHistory()).some(entry => entry.poId === orderId), "Drafts must be excluded from description history");
   const details = await call(`/purchase-orders/${orderId}`);
   assert.equal(details.status, 200);
   assert.ok((await details.text()).includes("Sign in to update status"));
@@ -88,6 +90,9 @@ async function main() {
   assert.ok(form.includes('id="prepared-by"')); assert.ok(form.includes("QA Employee")); assert.ok(!form.includes("Select preparer"));
   const sent = await call(`/api/purchase-orders/${orderId}/send`, { method: "POST", cookie });
   assert.equal(sent.status, 200); assert.equal((await sent.json()).emailMode, "preview");
+  const previousItem = (await loadDescriptionHistory()).find(entry => entry.description === payload.items[0].description);
+  assert.equal(previousItem.poId, orderId);
+  assert.ok(!(await loadDescriptionHistory(orderId)).some(entry => entry.poId === orderId), "An edited order must not match itself");
   const secondCookie = await signup("QA Colleague", `colleague-${suffix}@example.invalid`);
   const revised = await call(`/api/purchase-orders/${orderId}/revise`, { method: "POST", cookie: secondCookie, body: payload });
   assert.equal(revised.status, 200, await revised.clone().text());
@@ -112,4 +117,5 @@ main().catch(error => { console.error(error); process.exitCode = 1; }).finally(a
   if (supplierId) await db.supplier.deleteMany({ where: { id: supplierId } });
   if (createdUsers.length) await db.user.deleteMany({ where: { id: { in: createdUsers } } });
   await db.$disconnect();
+  await require("../src/lib/db.ts").prisma.$disconnect();
 });
