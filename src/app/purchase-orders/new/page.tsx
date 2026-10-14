@@ -3,15 +3,15 @@ import Link from "next/link";
 import POForm, { SupplierOption } from "@/components/POForm";
 import { prisma } from "@/lib/db";
 import { parseCc } from "@/lib/serialize";
-import { loadDescriptionHistory } from "@/lib/loadDescriptionHistory";
+import { loadItemHistory } from "@/lib/loadDescriptionHistory";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewPOPage() {
   const user = await requireUser("/purchase-orders/new");
-  const [suppliers, descriptionHistory] = await Promise.all([
+  const [suppliers, history] = await Promise.all([
     prisma.supplier.findMany({ orderBy: { name: "asc" } }),
-    loadDescriptionHistory(),
+    loadItemHistory(),
   ]);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -45,7 +45,8 @@ export default async function NewPOPage() {
       mode="create"
       suppliers={options}
       preparer={user}
-      descriptionHistory={descriptionHistory}
+      descriptionHistory={history.descriptionHistory}
+      itemCodeHistory={history.itemCodeHistory}
       today={today}
     />
   );

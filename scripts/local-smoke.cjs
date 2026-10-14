@@ -40,7 +40,7 @@ function pdfText(bytes) {
   return text;
 }
 async function main() {
-  const { loadDescriptionHistory } = require("../src/lib/loadDescriptionHistory.ts");
+  const { loadDescriptionHistory, loadItemHistory } = require("../src/lib/loadDescriptionHistory.ts");
   assert.equal((await call("/")).status, 200);
   for (const path of ["/suppliers", "/purchase-orders/new", "/account"]) {
     const r = await call(path); assert.equal(r.status, 307); assert.equal(r.headers.get("location"), `/login?next=${encodeURIComponent(path)}`);
@@ -70,6 +70,7 @@ async function main() {
   assert.equal(created.status, 200, await created.clone().text());
   orderId = (await created.json()).id;
   assert.ok(!(await loadDescriptionHistory()).some(entry => entry.poId === orderId), "Drafts must be excluded from description history");
+  assert.ok(!(await loadItemHistory()).itemCodeHistory.some(entry => entry.poId === orderId), "Drafts must be excluded from code history");
   const details = await call(`/purchase-orders/${orderId}`);
   assert.equal(details.status, 200);
   assert.ok((await details.text()).includes("Sign in to update status"));
@@ -92,6 +93,8 @@ async function main() {
   assert.equal(sent.status, 200); assert.equal((await sent.json()).emailMode, "preview");
   const previousItem = (await loadDescriptionHistory()).find(entry => entry.description === payload.items[0].description);
   assert.equal(previousItem.poId, orderId);
+  assert.equal((await loadItemHistory()).itemCodeHistory.find(entry => entry.itemCode === "QA").poId, orderId);
+  assert.ok(!(await loadItemHistory(orderId)).itemCodeHistory.some(entry => entry.poId === orderId), "An edited order must not match its own code");
   assert.ok(!(await loadDescriptionHistory(orderId)).some(entry => entry.poId === orderId), "An edited order must not match itself");
   const secondCookie = await signup("QA Colleague", `colleague-${suffix}@example.invalid`);
   const revised = await call(`/api/purchase-orders/${orderId}/revise`, { method: "POST", cookie: secondCookie, body: payload });

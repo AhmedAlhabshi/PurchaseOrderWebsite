@@ -43,9 +43,10 @@ production. No production database changes are made by `dev:local`.
   (search by anything: PO number, supplier, item code, prepared-by, sent/arrival
   date) plus a status filter.
 - **Create Purchase Order** – a simple form → generate a PDF → preview → send.
-  Each item description shows whether it was previously ordered, with a link to
-  the newest matching PO. Matching ignores case and extra whitespace, searches
-  all suppliers, and excludes drafts and the order currently being edited.
+  Item codes and descriptions each show whether they were previously ordered,
+  with a link to the newest matching PO. Each field matches independently,
+  ignoring case and extra whitespace. History searches all suppliers and excludes
+  drafts and the order currently being edited.
 - **Purchase Order Details** – full order data, PDF (view/download), editing with
   revisions, and per-item delivery tracking.
 - **Suppliers** – a small screen to manage suppliers (name + abbreviation +

@@ -8,6 +8,8 @@ import { DELIVERY_METHODS, CURRENCIES, DEFAULT_CC_EMAILS } from "@/lib/options";
 import type { PreparerDetails } from "@/lib/preparedBy";
 import { formatAmount } from "@/lib/format";
 import { normalizeDescription, DescriptionHistoryEntry } from "@/lib/descriptionHistory";
+import type { ItemCodeHistoryEntry } from "@/lib/itemCodeHistory";
+import ItemHistoryHint from "./ItemHistoryHint";
 
 export type SupplierOption = {
   id: string;
@@ -82,6 +84,7 @@ export default function POForm({
   suppliers: initialSuppliers,
   preparer,
   descriptionHistory,
+  itemCodeHistory,
   today,
   poId,
   initial,
@@ -90,6 +93,7 @@ export default function POForm({
   suppliers: SupplierOption[];
   preparer: PreparerDetails;
   descriptionHistory: DescriptionHistoryEntry[];
+  itemCodeHistory: ItemCodeHistoryEntry[];
   today: string;
   poId?: string;
   initial?: POFormInitial;
@@ -99,6 +103,9 @@ export default function POForm({
   const previousDescriptions = useMemo(() => new Map(
     descriptionHistory.map(entry => [normalizeDescription(entry.description), entry])
   ), [descriptionHistory]);
+  const previousItemCodes = useMemo(() => new Map(
+    itemCodeHistory.map(entry => [normalizeDescription(entry.itemCode), entry])
+  ), [itemCodeHistory]);
 
   const [suppliers, setSuppliers] = useState<SupplierOption[]>(initialSuppliers);
   const [supplierId, setSupplierId] = useState(initial?.supplierId || "");
@@ -801,6 +808,7 @@ export default function POForm({
                       onChange={(e) => updateItem(it.key, { itemCode: e.target.value })}
                       placeholder="Code"
                     />
+                    <ItemHistoryHint value={it.itemCode} previous={previousItemCodes.get(normalizeDescription(it.itemCode))} />
                   </td>
                   <td className="px-2 py-1.5">
                     <input
@@ -809,23 +817,7 @@ export default function POForm({
                       onChange={(e) => updateItem(it.key, { description: e.target.value })}
                       placeholder="Description"
                     />
-                    {normalizeDescription(it.description) && (() => {
-                      const previous = previousDescriptions.get(normalizeDescription(it.description));
-                      return previous ? (
-                        <p className="mt-1 text-xs text-green-700">
-                          ✓ Previously ordered —{" "}
-                          <Link
-                            href={`/purchase-orders/${previous.poId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-semibold underline hover:text-green-900"
-                            title={`Last ordered from ${previous.supplierName}`}
-                          >
-                            {previous.poNumber}
-                          </Link>
-                        </p>
-                      ) : <p className="mt-1 text-xs text-slate-500">New — not previously ordered</p>;
-                    })()}
+                    <ItemHistoryHint value={it.description} previous={previousDescriptions.get(normalizeDescription(it.description))} />
                   </td>
                   <td className="px-2 py-1.5">
                     <input
