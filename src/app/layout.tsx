@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { currentUser } from "@/lib/auth";
+import LogoutButton from "@/components/LogoutButton";
 
 export const metadata: Metadata = {
   title: "Purchase Orders",
   description: "Create, send and track purchase orders.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await currentUser();
   return (
     <html lang="en">
       <body className="min-h-screen">
@@ -25,10 +28,10 @@ export default function RootLayout({
                 Purchase Orders
               </span>
             </Link>
-            <div className="flex items-center gap-2">
-              <Link href="/preparers" className="btn-secondary hidden sm:inline-flex">
-                Preparers
-              </Link>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {user && <Link href="/account" className="btn-secondary">
+                {user.name}
+              </Link>}
               <Link href="/suppliers" className="btn-secondary">
                 Suppliers
               </Link>
@@ -37,6 +40,7 @@ export default function RootLayout({
                 <span className="hidden sm:inline">Create Purchase Order</span>
                 <span className="sm:hidden">Create</span>
               </Link>
+              {user ? <LogoutButton /> : <Link href="/login" className="btn-secondary">Sign in</Link>}
             </div>
           </div>
         </header>

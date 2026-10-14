@@ -1,3 +1,4 @@
+import { apiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
@@ -10,6 +11,8 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   const po = await prisma.purchaseOrder.findUnique({
     where: { id: params.id },
     select: { id: true },

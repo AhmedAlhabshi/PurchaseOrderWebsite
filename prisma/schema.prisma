@@ -1,6 +1,4 @@
-// Prisma schema — simple SQLite database.
-// Portable: to move to a hosted DB later, switch `provider` to "postgresql"
-// (or "mysql") and update DATABASE_URL. The models below stay the same.
+// Production database. scripts/local-dev.cjs derives an isolated SQLite schema.
 
 generator client {
   provider = "prisma-client-js"
@@ -23,6 +21,33 @@ model Preparer {
   updatedAt DateTime @updatedAt
 }
 
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  sessions     Session[]
+  orders       PurchaseOrder[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthThrottle {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+}
+
 model Supplier {
   id           String @id @default(cuid())
   name         String @unique
@@ -42,6 +67,8 @@ model Supplier {
 model PurchaseOrder {
   id       String @id @default(cuid())
   poNumber String @unique
+  preparedByUserId String?
+  preparedByUser User? @relation(fields: [preparedByUserId], references: [id], onDelete: SetNull)
 
   // Optional link to the supplier record (order still stores a denormalized
   // copy of the supplier info so the document stays intact if the supplier
@@ -89,6 +116,7 @@ model PurchaseOrder {
   statusEvents StatusEvent[]
 
   @@index([supplierId])
+  @@index([preparedByUserId])
 }
 
 model POItem {

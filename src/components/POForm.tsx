@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { defaultEmailBody } from "@/lib/emailBody";
 import { DELIVERY_METHODS, CURRENCIES, DEFAULT_CC_EMAILS } from "@/lib/options";
+import type { PreparerDetails } from "@/lib/preparedBy";
 import { formatAmount } from "@/lib/format";
 
 export type SupplierOption = {
@@ -14,13 +15,6 @@ export type SupplierOption = {
   seq: number;
   seqYear: number;
   emails: string[];
-};
-
-export type PreparerOption = {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
 };
 
 export type POFormInitial = {
@@ -85,14 +79,14 @@ function projectedNumber(sup: SupplierOption): string {
 export default function POForm({
   mode,
   suppliers: initialSuppliers,
-  preparers: initialPreparers,
+  preparer,
   today,
   poId,
   initial,
 }: {
   mode: "create" | "edit";
   suppliers: SupplierOption[];
-  preparers: PreparerOption[];
+  preparer: PreparerDetails;
   today: string;
   poId?: string;
   initial?: POFormInitial;
@@ -102,7 +96,6 @@ export default function POForm({
 
   const [suppliers, setSuppliers] = useState<SupplierOption[]>(initialSuppliers);
   const [supplierId, setSupplierId] = useState(initial?.supplierId || "");
-  const [preparers, setPreparers] = useState<PreparerOption[]>(initialPreparers);
 
   const [attention, setAttention] = useState(initial?.attention || "");
   const [mainEmail, setMainEmail] = useState(initial?.mainEmail || "");
@@ -120,16 +113,9 @@ export default function POForm({
   );
   const [paymentTerms, setPaymentTerms] = useState(initial?.paymentTerms || "");
   const [currency, setCurrency] = useState<string>(initial?.currency || "USD");
-  const [preparedBy, setPreparedBy] = useState(initial?.preparedBy || "");
-  const [preparedByEmail, setPreparedByEmail] = useState(
-    initial?.preparedByEmail || ""
-  );
-  const [preparedByPhone, setPreparedByPhone] = useState(
-    initial?.preparedByPhone || ""
-  );
-  const [preparerId, setPreparerId] = useState(
-    () => initialPreparers.find((p) => p.name === initial?.preparedBy)?.id || ""
-  );
+  const preparedBy = preparer.name;
+  const preparedByEmail = preparer.email;
+  const preparedByPhone = preparer.phone;
   const [taxRate, setTaxRate] = useState(
     initial?.taxRate ? String(initial.taxRate) : ""
   );
@@ -164,14 +150,6 @@ export default function POForm({
   const [addingSupplier, setAddingSupplier] = useState(false);
   const [addSupError, setAddSupError] = useState<string | null>(null);
 
-  // Add-preparer modal
-  const [showAddPreparer, setShowAddPreparer] = useState(false);
-  const [newPrepName, setNewPrepName] = useState("");
-  const [newPrepPhone, setNewPrepPhone] = useState("");
-  const [newPrepEmail, setNewPrepEmail] = useState("");
-  const [addingPreparer, setAddingPreparer] = useState(false);
-  const [addPrepError, setAddPrepError] = useState<string | null>(null);
-
   const selectedSupplier = suppliers.find((s) => s.id === supplierId) || null;
   const supplierEmails = selectedSupplier?.emails ?? [];
 
@@ -180,57 +158,6 @@ export default function POForm({
     setSupplierId(id);
     const sup = suppliers.find((s) => s.id === id);
     if (sup && sup.emails.length > 0) setMainEmail(sup.emails[0]);
-  }
-
-  // Picking a preparer fills name / phone / email.
-  function selectPreparer(id: string) {
-    setPreparerId(id);
-    const p = preparers.find((x) => x.id === id);
-    setPreparedBy(p?.name || "");
-    setPreparedByEmail(p?.email || "");
-    setPreparedByPhone(p?.phone || "");
-  }
-
-  async function handleAddPreparer() {
-    setAddPrepError(null);
-    if (!newPrepName.trim()) {
-      setAddPrepError("Name is required.");
-      return;
-    }
-    setAddingPreparer(true);
-    try {
-      const res = await fetch("/api/preparers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newPrepName,
-          phone: newPrepPhone,
-          email: newPrepEmail,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setAddPrepError(data?.error || "Could not add preparer.");
-        setAddingPreparer(false);
-        return;
-      }
-      const p: PreparerOption = data.preparer;
-      setPreparers((list) =>
-        [...list, p].sort((a, b) => a.name.localeCompare(b.name))
-      );
-      setPreparerId(p.id);
-      setPreparedBy(p.name);
-      setPreparedByEmail(p.email);
-      setPreparedByPhone(p.phone);
-      setShowAddPreparer(false);
-      setNewPrepName("");
-      setNewPrepPhone("");
-      setNewPrepEmail("");
-    } catch {
-      setAddPrepError("Network error while adding preparer.");
-    } finally {
-      setAddingPreparer(false);
-    }
   }
 
   function addCcEmail(email: string) {
@@ -382,6 +309,7 @@ export default function POForm({
   function buildPayload(send = true) {
     return {
       supplierId,
+      poId: isEdit ? poId : undefined,
       revision: nextRevision,
       send,
       emailBody: customEmailBody === null ? undefined : customEmailBody,
@@ -790,34 +718,10 @@ export default function POForm({
           </div>
 
           <div>
-            <label className="field-label">Prepared By *</label>
-            <div className="flex gap-2">
-              <select
-                className={`input ${errors.preparedBy ? "input-invalid" : ""}`}
-                value={preparerId}
-                onChange={(e) => selectPreparer(e.target.value)}
-              >
-                <option value="">— Select preparer —</option>
-                {preparers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="btn-secondary whitespace-nowrap"
-                onClick={() => setShowAddPreparer(true)}
-              >
-                + New
-              </button>
-            </div>
-            {preparerId && (preparedByPhone || preparedByEmail) && (
-              <p className="mt-1 text-xs text-slate-500">
-                {[preparedByPhone, preparedByEmail].filter(Boolean).join(" · ")}
-              </p>
-            )}
-            {errors.preparedBy && <p className="error-text">{errors.preparedBy}</p>}
+            <label htmlFor="prepared-by" className="field-label">Prepared By</label>
+            <input id="prepared-by" className="input bg-slate-50" value={preparedBy} readOnly />
+            <p className="mt-1 text-xs text-slate-500">{[preparedByPhone, preparedByEmail].filter(Boolean).join(" · ")}</p>
+            <p className="mt-1 text-xs text-slate-500">{isEdit ? "Original preparer — saved with this order." : "Set automatically from your account."}</p>
           </div>
 
           <div>
@@ -1077,69 +981,7 @@ export default function POForm({
         </div>
       )}
 
-      {/* Add preparer modal */}
-      {showAddPreparer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="card w-full max-w-md p-5">
-            <h3 className="mb-4 text-lg font-semibold text-slate-800">
-              Add Preparer
-            </h3>
-            {addPrepError && (
-              <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {addPrepError}
-              </div>
-            )}
-            <div className="space-y-3">
-              <div>
-                <label className="field-label">Name *</label>
-                <input
-                  className="input"
-                  value={newPrepName}
-                  onChange={(e) => setNewPrepName(e.target.value)}
-                  placeholder="e.g. Abdulbari"
-                />
-              </div>
-              <div>
-                <label className="field-label">Phone</label>
-                <input
-                  className="input"
-                  value={newPrepPhone}
-                  onChange={(e) => setNewPrepPhone(e.target.value)}
-                  placeholder="e.g. +966 5x xxx xxxx"
-                />
-              </div>
-              <div>
-                <label className="field-label">Email</label>
-                <input
-                  type="email"
-                  className="input"
-                  value={newPrepEmail}
-                  onChange={(e) => setNewPrepEmail(e.target.value)}
-                  placeholder="name@diamondtools-est.com"
-                />
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowAddPreparer(false)}
-                disabled={addingPreparer}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleAddPreparer}
-                disabled={addingPreparer}
-              >
-                {addingPreparer ? "Saving…" : "Save Preparer"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

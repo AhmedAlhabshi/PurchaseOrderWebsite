@@ -1,8 +1,8 @@
+import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import POForm, {
   SupplierOption,
-  PreparerOption,
   POFormInitial,
 } from "@/components/POForm";
 import { parseCc } from "@/lib/serialize";
@@ -15,13 +15,13 @@ export default async function EditPOPage({
 }: {
   params: { id: string };
 }) {
-  const [po, suppliers, preparers] = await Promise.all([
+  await requireUser(`/purchase-orders/${params.id}/edit`);
+  const [po, suppliers] = await Promise.all([
     prisma.purchaseOrder.findUnique({
       where: { id: params.id },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
     prisma.supplier.findMany({ orderBy: { name: "asc" } }),
-    prisma.preparer.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   if (!po) notFound();
@@ -35,12 +35,6 @@ export default async function EditPOPage({
     emails: parseCc(s.emails),
   }));
 
-  const preparerOptions: PreparerOption[] = preparers.map((p) => ({
-    id: p.id,
-    name: p.name,
-    phone: p.phone,
-    email: p.email,
-  }));
 
   const initial: POFormInitial = {
     supplierId: po.supplierId || "",
@@ -73,7 +67,7 @@ export default async function EditPOPage({
     <POForm
       mode="edit"
       suppliers={options}
-      preparers={preparerOptions}
+      preparer={{ name: po.preparedBy, email: po.preparedByEmail, phone: po.preparedByPhone }}
       today={today}
       poId={po.id}
       initial={initial}

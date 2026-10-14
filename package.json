@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "node scripts/local-dev.cjs",
+    "setup:local": "node scripts/local-dev.cjs --setup-only",
+    "test": "node --import tsx --test tests/*.test.ts",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",

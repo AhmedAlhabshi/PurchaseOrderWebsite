@@ -1,15 +1,14 @@
+import { requireUser } from "@/lib/auth";
 import Link from "next/link";
-import POForm, { SupplierOption, PreparerOption } from "@/components/POForm";
+import POForm, { SupplierOption } from "@/components/POForm";
 import { prisma } from "@/lib/db";
 import { parseCc } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewPOPage() {
-  const [suppliers, preparers] = await Promise.all([
-    prisma.supplier.findMany({ orderBy: { name: "asc" } }),
-    prisma.preparer.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  const user = await requireUser("/purchase-orders/new");
+  const suppliers = await prisma.supplier.findMany({ orderBy: { name: "asc" } });
   const today = new Date().toISOString().slice(0, 10);
 
   const options: SupplierOption[] = suppliers.map((s) => ({
@@ -21,12 +20,6 @@ export default async function NewPOPage() {
     emails: parseCc(s.emails),
   }));
 
-  const preparerOptions: PreparerOption[] = preparers.map((p) => ({
-    id: p.id,
-    name: p.name,
-    phone: p.phone,
-    email: p.email,
-  }));
 
   if (options.length === 0) {
     return (
@@ -47,7 +40,7 @@ export default async function NewPOPage() {
     <POForm
       mode="create"
       suppliers={options}
-      preparers={preparerOptions}
+      preparer={user}
       today={today}
     />
   );

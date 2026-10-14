@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Simple shared-password gate (HTTP Basic Auth). This is NOT a user-accounts
-// system — it's one password for everyone, so the app can be safely exposed on
-// the internet without listing purchase orders publicly.
+// Shared-password gate (HTTP Basic Auth), followed by employee login inside
+// the application. Employee sessions are validated against the DB server-side.
 //
 // Set APP_PASSWORD (and optionally APP_USER, default "team") in the environment
 // to enable it. If APP_PASSWORD is empty/unset, the gate is disabled (handy for
 // local development).
 export function middleware(req: NextRequest) {
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    const origin = req.headers.get("origin");
+    let sameOrigin = false;
+    try { sameOrigin = !!origin && new URL(origin).host === req.headers.get("host"); } catch {}
+    if (!sameOrigin) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+  }
   const password = process.env.APP_PASSWORD;
   if (!password) return NextResponse.next();
 

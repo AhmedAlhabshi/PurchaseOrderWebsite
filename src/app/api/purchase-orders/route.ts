@@ -1,3 +1,5 @@
+import { preparedBySnapshot } from "@/lib/preparedBy";
+import { apiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
@@ -17,6 +19,8 @@ export const dynamic = "force-dynamic";
 // Creates the PO: renders + stores the PDF, sends (or previews) the email,
 // then persists the order, items and the first status event.
 export async function POST(req: NextRequest) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   let body: unknown;
   try {
     body = await req.json();
@@ -32,7 +36,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const data = parsed.data;
+  const data = { ...parsed.data, ...preparedBySnapshot(actor) };
   if (!data.supplierId) {
     return NextResponse.json(
       { error: "Please choose a supplier." },
@@ -106,6 +110,7 @@ export async function POST(req: NextRequest) {
   const created = await prisma.purchaseOrder.create({
     data: {
       poNumber,
+      preparedByUserId: actor.id,
       supplierId: data.supplierId,
       supplierName: data.supplierName,
       attention: data.attention || null,
@@ -163,6 +168,8 @@ export async function POST(req: NextRequest) {
 
 // Simple list endpoint (the list page reads Prisma directly, but this is handy).
 export async function GET() {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   const orders = await prisma.purchaseOrder.findMany({
     orderBy: { createdAt: "desc" },
   });

@@ -1,3 +1,4 @@
+import { apiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -28,6 +29,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   const supplier = await prisma.supplier.findUnique({ where: { id: params.id } });
   if (!supplier) {
     return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
@@ -78,6 +81,8 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   const count = await prisma.purchaseOrder.count({
     where: { supplierId: params.id },
   });

@@ -1,7 +1,43 @@
 # Purchase Orders
 
-A very small internal web app to **create, send and track Purchase Orders**.
-No login, no user accounts, no dashboard — just three screens.
+A small internal web app to **create, send and track Purchase Orders**.
+Employees register with their own name, email, phone and password, then sign in.
+The existing shared site password remains the outer access gate in production.
+
+### Local account preview (isolated database)
+
+Run `npm run dev:local` and open `http://127.0.0.1:3000/register`.
+This creates `.env.local` and an SQLite database under `.local/`. The local
+server binds to your computer only, uses email preview mode, and skips the
+shared site password. Register your account, add a test supplier, and create a
+PO. All these records stay in the local database. The script refuses to
+overwrite an existing `.env.local` configured for another database.
+
+`npm run setup:local` prepares this database without starting the server.
+`npm test` runs the unit tests. Stop the local server before a production build;
+`npm run dev:local` regenerates the SQLite client on restart.
+
+### Employee accounts
+
+- Registration requires name, email, phone and a password of at least 8 characters.
+- Passwords are salted and hashed with scrypt. Raw passwords are never saved.
+- Sessions last 30 days in an HttpOnly cookie; logout revokes the session.
+- The list, order details and PDF viewing are available after the shared site gate,
+  without employee login. Creating/revising orders and all other writes require
+  an employee session checked on the server. Sign-in returns to the requested
+  creation/edit page. Supplier management and account pages also require login.
+- New POs snapshot the authenticated employee's name/email/phone. The form
+  cannot choose another preparer, and submitted identity fields are overridden.
+- Revisions and draft sending keep the original preparer's saved details.
+- Existing POs remain intact; `/preparers` now redirects to **My account**.
+- Account registration is open to everyone who passes the shared site gate.
+  Email confirmation and password recovery are not part of this local preview.
+
+Before production rollout, remove local overrides from the deployment environment,
+generate the PostgreSQL client (`npm run prisma:generate`), and review/apply
+the added User, Session, AuthThrottle tables and nullable PO author link against
+the deployment database. Do not run `db:push` with the local SQLite schema against
+production. No production database changes are made by `dev:local`.
 
 - **Purchase Orders** – a list of all orders with a field-scoped search
   (search by anything: PO number, supplier, item code, prepared-by, sent/arrival

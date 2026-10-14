@@ -1,3 +1,4 @@
+import { apiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -19,6 +20,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   const po = await prisma.purchaseOrder.findUnique({
     where: { id: params.id },
     include: { items: true },

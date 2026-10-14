@@ -1,3 +1,6 @@
+import { prisma } from "@/lib/db";
+import { preparedBySnapshot } from "@/lib/preparedBy";
+import { apiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { poInputSchema, computeGrandTotal } from "@/lib/validation";
 import { renderPOPdf } from "@/lib/pdf";
@@ -8,6 +11,8 @@ export const dynamic = "force-dynamic";
 // Generates the PO PDF from the current form data WITHOUT saving anything.
 // Used for the "Generate PO & Preview" step.
 export async function POST(req: NextRequest) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   let body: unknown;
   try {
     body = await req.json();
@@ -23,7 +28,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const data = parsed.data;
+  const original = parsed.data.poId ? await prisma.purchaseOrder.findUnique({ where: { id: parsed.data.poId } }) : undefined;
+  if (parsed.data.poId && !original) return NextResponse.json({ error: "Purchase order not found" }, { status: 404 });
+  const data = { ...parsed.data, ...preparedBySnapshot(actor, original ?? undefined) };
   const grandTotal = computeGrandTotal(data.items, data.taxRate);
 
   const pdf = await renderPOPdf({

@@ -12,6 +12,7 @@ export const itemSchema = z.object({
 });
 
 export const poInputSchema = z.object({
+  poId: z.string().optional(),
   supplierId: z.string().trim().optional().default(""),
   revision: z.coerce.number().int().min(0).optional().default(0),
   supplierName: z.string().trim().min(1, "Supplier name is required"),
@@ -29,7 +30,8 @@ export const poInputSchema = z.object({
   deliveryMethod: z.string().trim().min(1, "Delivery method is required"),
   paymentTerms: z.string().trim().optional().default(""),
   currency: z.string().trim().min(1, "Currency is required"),
-  preparedBy: z.string().trim().min(1, "Prepared by is required"),
+  // Identity is supplied by the server from the session/saved order.
+  preparedBy: z.string().trim().optional().default(""),
   preparedByEmail: z.string().trim().optional().default(""),
   preparedByPhone: z.string().trim().optional().default(""),
   // One tax percentage for the whole order (optional).

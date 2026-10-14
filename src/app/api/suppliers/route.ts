@@ -1,3 +1,4 @@
+import { apiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -29,6 +30,8 @@ const createSchema = z.object({
 });
 
 export async function GET() {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   const suppliers = await prisma.supplier.findMany({
     orderBy: { name: "asc" },
   });
@@ -36,6 +39,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   let body: unknown;
   try {
     body = await req.json();

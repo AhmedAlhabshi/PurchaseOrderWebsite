@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import SuppliersManager, { SupplierRow } from "@/components/SuppliersManager";
 import { parseCc } from "@/lib/serialize";
@@ -5,6 +6,7 @@ import { parseCc } from "@/lib/serialize";
 export const dynamic = "force-dynamic";
 
 export default async function SuppliersPage() {
+  await requireUser("/suppliers");
   const suppliers = await prisma.supplier.findMany({
     orderBy: { name: "asc" },
     include: { _count: { select: { purchaseOrders: true } } },

@@ -1,3 +1,4 @@
+import { apiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendPOEmail } from "@/lib/mailer";
@@ -13,6 +14,8 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   const po = await prisma.purchaseOrder.findUnique({
     where: { id: params.id },
     include: { items: { orderBy: { sortOrder: "asc" } } },

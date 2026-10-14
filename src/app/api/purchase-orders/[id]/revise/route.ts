@@ -1,3 +1,5 @@
+import { preparedBySnapshot } from "@/lib/preparedBy";
+import { apiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
@@ -19,6 +21,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const actor = await apiUser();
+  if (actor instanceof NextResponse) return actor;
   const existing = await prisma.purchaseOrder.findUnique({
     where: { id: params.id },
     include: { items: true },
@@ -42,7 +46,7 @@ export async function POST(
     );
   }
 
-  const data = parsed.data;
+  const data = { ...parsed.data, ...preparedBySnapshot(actor, existing) };
   const grandTotal = computeGrandTotal(data.items, data.taxRate);
   const revision = existing.revision + 1;
   const poNumber = existing.poNumber;

@@ -1,3 +1,5 @@
+import { currentUser } from "@/lib/auth";
+import { loginHref } from "@/lib/authNavigation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -32,6 +34,8 @@ export default async function PODetailsPage({
   params: { id: string };
   searchParams: { created?: string; revised?: string };
 }) {
+  const user = await currentUser();
+  const signIn = loginHref(`/purchase-orders/${params.id}`);
   const po = await prisma.purchaseOrder.findUnique({
     where: { id: params.id },
     include: {
@@ -81,7 +85,7 @@ export default async function PODetailsPage({
             📝 This purchase order is a <strong>draft</strong> — it has not been
             sent to the supplier yet.
           </span>
-          <SendEmailButton poId={po.id} mainEmail={po.mainEmail} />
+          {user ? <SendEmailButton poId={po.id} mainEmail={po.mainEmail} /> : <Link href={signIn} className="btn-success">Sign in to send</Link>}
         </div>
       )}
 
@@ -148,7 +152,7 @@ export default async function PODetailsPage({
           <a href={`/api/purchase-orders/${po.id}/pdf?download=1`} className="btn-primary">
             Download PDF
           </a>
-          <DeletePOButton poId={po.id} poNumber={po.poNumber} />
+          {user ? <DeletePOButton poId={po.id} poNumber={po.poNumber} /> : <Link href={signIn} className="btn-secondary">Sign in to delete</Link>}
         </div>
       </div>
 
@@ -306,17 +310,17 @@ export default async function PODetailsPage({
             <p className="mb-4 text-xs text-slate-500">
               Record deliveries per item (supports partial / multiple batches).
             </p>
-            <ReceivingPanel poId={po.id} items={receivingItems} />
+            {user ? <ReceivingPanel poId={po.id} items={receivingItems} /> : <Link href={signIn} className="btn-secondary w-full">Sign in to receive items</Link>}
           </section>
 
           <section className="card p-5">
             <h2 className="mb-4 text-lg font-semibold text-slate-800">Update Status</h2>
-            <TrackingPanel
+            {user ? <TrackingPanel
               poId={po.id}
               expectedShipping={toDateInputValue(po.expectedShipping)}
               expectedArrival={toDateInputValue(po.expectedArrival)}
               confirmed={confirmed}
-            />
+            /> : <Link href={signIn} className="btn-secondary w-full">Sign in to update status</Link>}
           </section>
         </div>
       </div>
