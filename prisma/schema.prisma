@@ -77,6 +77,7 @@ model PurchaseOrder {
   expectedArrival  DateTime?
   emailSentAt      DateTime?
   emailMode        String?   // "sent" | "preview" — how the last email was handled
+  emailBody        String?   // null uses the default template; empty means intentionally blank
 
   // PDF stored directly in the database (a saved snapshot of the sent document).
   pdfData Bytes?

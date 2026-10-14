@@ -1,0 +1,1 @@
+ALTER TABLE "PurchaseOrder" ADD COLUMN IF NOT EXISTS "emailBody" TEXT;

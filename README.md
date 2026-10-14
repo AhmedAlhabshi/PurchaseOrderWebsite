@@ -31,6 +31,18 @@ Each supplier stores a "current number" you can edit on the **Suppliers** screen
 (handy when migrating existing counts from Excel — set it to the last number used
 and the next PO continues from there).
 
+### Editable email message
+
+The PO form includes an **Email Message** field prefilled with the standard
+message. It updates with the contact, PO number and preparer until edited.
+You can customize or clear it, or use **Reset to default**. Custom text is saved
+with drafts and used when sending or revising the order. A blank message stays
+blank; the PDF is still attached. This field does not change the PDF content.
+
+When deploying this change to an existing database, run `npm run db:push` against
+the deployment database before deploying the updated app to add the nullable
+`PurchaseOrder.emailBody` column. Existing orders continue using the default.
+
 ### Editing & revisions
 
 Open any PO → **Edit / Revise**. You can change anything (items, prices, emails,

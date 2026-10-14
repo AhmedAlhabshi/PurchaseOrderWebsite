@@ -16,6 +16,7 @@ export const poInputSchema = z.object({
   revision: z.coerce.number().int().min(0).optional().default(0),
   supplierName: z.string().trim().min(1, "Supplier name is required"),
   attention: z.string().trim().optional().default(""),
+  emailBody: z.string().max(20000, "Email message is too long").optional(),
   mainEmail: z.string().trim().email("Main email is not valid"),
   ccEmails: z
     .array(z.string().trim())

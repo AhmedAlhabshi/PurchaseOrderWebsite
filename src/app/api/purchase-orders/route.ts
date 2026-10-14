@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
     try {
       const result = await sendPOEmail({
         to: data.mainEmail,
+        emailBody: data.emailBody,
         cc: data.ccEmails,
         subject: `Purchase Order - ${poNumber}`,
         poNumber,
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
       attention: data.attention || null,
       mainEmail: data.mainEmail,
       ccEmails: stringifyCc(data.ccEmails),
+      emailBody: data.emailBody ?? null,
       poDate: new Date(data.poDate),
       deliveryMethod: data.deliveryMethod,
       paymentTerms: data.paymentTerms || null,

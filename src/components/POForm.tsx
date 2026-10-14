@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { defaultEmailBody } from "@/lib/emailBody";
 import { DELIVERY_METHODS, CURRENCIES, DEFAULT_CC_EMAILS } from "@/lib/options";
 import { formatAmount } from "@/lib/format";
 
@@ -37,6 +38,7 @@ export type POFormInitial = {
   preparedByEmail: string;
   preparedByPhone: string;
   revision: number;
+  emailBody: string | null;
   taxRate: number;
   items: {
     itemCode: string;
@@ -243,6 +245,15 @@ export default function POForm({
   }, [isEdit, initial, selectedSupplier]);
 
   const nextRevision = isEdit ? (initial?.revision ?? 0) + 1 : 0;
+  const [customEmailBody, setCustomEmailBody] = useState<string | null>(
+    initial?.emailBody ?? null
+  );
+  const emailBody = customEmailBody ?? defaultEmailBody({
+    poNumber,
+    attention: attention.trim(),
+    preparedBy: preparedBy.trim(),
+    revision: nextRevision,
+  });
 
   // ----- Items helpers -----
   function updateItem(key: string, patch: Partial<ItemRow>) {
@@ -373,6 +384,7 @@ export default function POForm({
       supplierId,
       revision: nextRevision,
       send,
+      emailBody: customEmailBody === null ? undefined : customEmailBody,
       supplierName: selectedSupplier?.name || initial?.supplierName || "",
       attention: attention.trim(),
       mainEmail: mainEmail.trim(),
@@ -822,6 +834,29 @@ export default function POForm({
             {errors.taxRate && <p className="error-text">{errors.taxRate}</p>}
           </div>
         </div>
+      </section>
+
+      <section className="card mb-5 p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <label htmlFor="email-body" className="text-lg font-semibold text-slate-800">
+            Email Message
+          </label>
+          <button type="button" className="btn-ghost" onClick={() => setCustomEmailBody(null)}>
+            Reset to default
+          </button>
+        </div>
+        <textarea
+          id="email-body"
+          className="input"
+          rows={11}
+          maxLength={20000}
+          value={emailBody}
+          onChange={(e) => setCustomEmailBody(e.target.value)}
+        />
+        <p className="mt-2 text-xs text-slate-500">
+          Edit or clear the message sent with the PO attachment. The default updates
+          with the order details until you edit it.
+        </p>
       </section>
 
       {/* Items */}

@@ -57,6 +57,7 @@ export default async function EditPOPage({
     preparedByEmail: po.preparedByEmail,
     preparedByPhone: po.preparedByPhone,
     revision: po.revision,
+    emailBody: po.emailBody,
     taxRate: po.taxRate,
     items: po.items.map((it) => ({
       itemCode: it.itemCode,

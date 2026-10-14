@@ -59,6 +59,8 @@ export async function POST(
   try {
     const result = await sendPOEmail({
       to: po.mainEmail,
+      emailBody: po.emailBody,
+      revision: po.revision,
       cc,
       subject: `Purchase Order - ${po.poNumber}`,
       poNumber: po.poNumber,
